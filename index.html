@@ -1908,60 +1908,71 @@
                         const prompt = `
                             Você é um assistente de extração de dados para uma calculadora de forro PVC.
                             Sua tarefa é analisar o texto do usuário e extrair informações para um JSON.
-                            Você DEVE responder APENAS com um único objeto JSON válido. Não inclua \`\`\`json ou qualquer outro texto.
+                            Você DEVE responder APENAS com um único objeto JSON válido. Não inclua [json] ou qualquer outro texto.
 
                             Esta é a lista de nomes EXATOS de forros disponíveis:
                             ${JSON.stringify(forroList)}
 
                             O objeto JSON deve ter a seguinte estrutura:
                             {
-                              "clientName": "string ou null",
-                              "clientAddress": "string ou null",
-                              "clientPhone": "string ou null",
-                              "clientObs": "string ou null",
-                              "measurementType": "rooms" ou "manual",
-                              "rooms": [ 
-                                { "width": 0.0, "length": 0.0 }
-                              ],
-                              "manualArea": 0.0 ou null,
-                              "forroModel": "string com o nome exato da lista ou null",
-                              "acabamentoType": "Meia Cana" ou "Perfil U" ou "Sem Acabamentos",
-                              "includeEstrutura": true ou false,
-                              "includeParafusos": true ou false,
-                              "includeMaoDeObra": true ou false,
-                              "includeFrete": true ou false,
-                              "manualQtyAcabamento": 0 ou null,
-                              "manualQtyParafusos": 0 ou null,
-                              "manualPriceForro": 0.0 ou null,
-                              "manualPriceAcabamento": 0.0 ou null,
-                              "manualPriceEstrutura": 0.0 ou null
+                                "clientName": "string ou null",
+                                "clientAddress": "string ou null",
+                                "clientPhone": "string ou null",
+                                "clientObs": "string ou null",
+                                "measurementType": "rooms" ou "manual",
+                                "rooms": [ 
+                                    { "width": 0.0, "length": 0.0 }
+                                ],
+                                "manualArea": 0.0 ou null,
+                                "forroModel": "string com o nome exato da lista ou null",
+                                "acabamentoType": "Meia Cana" ou "Perfil U" ou "Sem Acabamentos",
+                                "includeEstrutura": true ou false,
+                                "includeParafusos": true ou false,
+                                "includeMaoDeObra": true ou false,
+                                "includeFrete": true ou false,
+                                "manualQtyAcabamento": 0 ou null,
+                                "manualQtyEstrutura": 0 ou null,
+                                "manualQtyParafusos": 0 ou null,
+                                "manualPriceForro": 0.0 ou null,
+                                "manualPriceAcabamento": 0.0 ou null,
+                                "manualPriceEstrutura": 0.0 ou null,
+                                "manualPriceParafuso": 0.0 ou null,
+                                "manualPriceMaoDeObra": 0.0 ou null,
+                                "manualPriceFrete": 0.0 ou null
                             }
-                            
+
                             REGRAS:
-                            1.  **measurementType**: 
+                            1.  measurementType: 
                                 - Se o texto contiver medidas como '6x6,20' ou '2,5x5,00', use "rooms".
                                 - Se o texto contiver uma área total como '40,8 MTS', use "manual".
                                 - Se ambos existirem, priorize "rooms".
                                 - Se nenhum existir, use "rooms".
-                            2.  **rooms**: Preencha este array APENAS se measurementType for "rooms". Use números para width e length. Converta vírgula para ponto (ex: 6,20 se torna 6.20).
-                            3.  **manualArea**: Preencha este campo APENAS se measurementType for "manual". Use um número (ex: 40.8).
-                            4.  **forroModel**: Analise o texto. Encontre o item da \`lista de forros\` que melhor corresponde ao que o usuário pediu (ex: "forro 8mm", "jatoba", "branco neve"). Faça uma correspondência aproximada. Retorne o NOME EXATO da lista que você escolheu. Se não houver menção ou for muito ambíguo, use \`null\`.
-                            5.  **Cliente**: Extraia Nome, Endereço e Telefone se existirem.
-                            6.  **acabamentoType**: Analise o texto por "meia cana", "rodaforro" ou "perfil u". 
+                            2.  rooms: Preencha este array APENAS se measurementType for "rooms". Use números para width e length. Converta vírgula para ponto (ex: 6,20 se torna 6.20).
+                            3.  manualArea: Preencha este campo APENAS se measurementType for "manual". Use um número (ex: 40.8).
+                            4.  forroModel: Analise o texto. Encontre o item da lista de forros que melhor corresponde ao que o usuário pediu (ex: "forro 8mm", "jatoba", "branco neve"). Faça uma correspondência aproximada. Retorne o NOME EXATO da lista que você escolheu. Se não houver menção ou for muito ambíguo, use null.
+                            5.  Cliente: Extraia Nome, Endereço e Telefone se existirem.
+                            6.  acabamentoType: Analise o texto por "meia cana", "rodaforro" ou "perfil u". 
                                 - Se encontrar "meia cana" ou "rodaforro", use "Meia Cana".
                                 - Se encontrar "perfil u", use "Perfil U".
-                                - **Se NENHUM acabamento for mencionado, use "Sem Acabamentos".**
-                            7.  **Serviços (Padrão é TRUE)**: Os serviços (estrutura, parafusos, mão de obra, frete) vêm inclusos por padrão (true). Só mude para 'false' se o texto EXPLICITAMENTE pedir para *REMOVER* o item.
-                                - \`includeEstrutura\`: Use \`false\` se o texto disser "sem estrutura", "sem armação", "só o forro". Senão, \`true\`.
-                                - \`includeParafusos\`: Use \`false\` se o texto disser "sem parafusos", "só o forro". Senão, \`true\`.
-                                - \`includeMaoDeObra\`: Use \`false\` se o texto disser "sem instalação", "sem mão de obra", "só o material". Senão, \`true\`.
-                                - \`includeFrete\`: Use \`false\` se o texto disser "sem frete", "sem entrega", "cliente retira". Senão, \`true\`.
-                            8.  **manualQtyAcabamento**: Se o texto especificar uma quantidade exata de barras de acabamento (ex: "7 brs de perfil", "10 meia cana", "07 brs"), extraia apenas o número (ex: 7 ou 10). Se não for mencionado, use \`null\`.
-                            9.  **manualQtyParafusos**: Se o texto especificar uma quantidade exata de parafusos (ex: "200 parafusos", "pacote com 500"), extraia apenas o número (ex: 200 ou 500). Se não for mencionado, use \`null\`.
-                            10. **manualPriceForro**: Se o texto especificar um preço para o forro (ex: "forro 30,00 o metro", "forro a 30,00"), extraia o valor numérico (ex: 30.00). Use \`null\` se não mencionado.
-                            11. **manualPriceAcabamento**: Se o texto especificar um preço para o acabamento (ex: "perfil U 45,00", "meia cana de 50,00"), extraia o valor numérico (ex: 45.00 ou 50.00). Use \`null\` se não mencionado.
-                            12. **manualPriceEstrutura**: Se o texto especificar um preço para a estrutura (ex: "metalon 20x20 25,00", "perfil Z a 22,00"), extraia o valor numérico (ex: 25.00 ou 22.00). Use \`null\` se não mencionado.
-                            
+                                - Se NENHUM acabamento for mencionado, use "Sem Acabamentos".
+                            7.  Serviços (Padrão é TRUE): Os serviços (estrutura, parafusos, mão de obra, frete) vêm inclusos por padrão (true). Só mude para 'false' se o texto EXPLICITAMENTE pedir para REMOVER o item.
+                                - includeEstrutura: Use false se o texto disser "sem estrutura", "sem armação", "só o forro". Senão, true.
+                                - includeParafusos: Use false se o texto disser "sem parafusos", "só o forro". Senão, true.
+                                - includeMaoDeObra: Use false se o texto disser "sem instalação", "sem mão de obra", "só o material". Senão, true.
+                                - includeFrete: Use false se o texto disser "sem frete", "sem entrega", "cliente retira". Senão, true.
+                            8.  manualQtyAcabamento: Se o texto especificar uma quantidade exata de barras de acabamento (ex: "7 brs de perfil", "10 meia cana", "07 brs"), extraia apenas o número (ex: 7 ou 10). Se não for mencionado, use null.
+                            9.  manualQtyParafusos: Se o texto especificar uma quantidade exata de parafusos (ex: "200 parafusos", "pacote com 500"), extraia apenas o número (ex: 200 ou 500). Se não for mencionado, use null.
+                            10. manualPriceForro: Se o texto especificar um preço para o forro (ex: "forro 30,00 o metro", "forro a 30,00"), extraia o valor numérico (ex: 30.00). Use null se não mencionado.
+                            11. manualPriceAcabamento: Se o texto especificar um preço para o acabamento (ex: "perfil U 45,00", "meia cana de 50,00"), extraia o valor numérico (ex: 45.00 ou 50.00). Use null se não mencionado.
+                            12. manualPriceEstrutura: Se o texto especificar um preço para a estrutura (ex: "metalon 20x20 25,00", "perfil Z a 22,00"), extraia o valor numérico (ex: 25.00 ou 22.00). Use null se não mencionado.
+                            13. manualPriceParafuso: Se o texto especificar um preço para parafuso (ex: "1300 parafusos 130,00" ou "parafuso 0,10"), extraia o valor total ou unitário (prefira unitário quando fizer sentido). Retorne número ou null.
+                            14. manualPriceMaoDeObra: Se o texto especificar o custo da mão de obra (ex: "Mão de obra 1300,00"), extraia o valor (ex: 1300.00). Use null se não houver.
+                            15. manualPriceFrete: Se o texto especificar um custo de frete (ex: "Frete 100,00" ou "entrega 80"), extraia o valor (ex: 100.00). Use null se não houver.
+                            16. manualQtyEstrutura: Se o texto especificar a quantidade de barras de estrutura (ex: "86 brs de perfil Z", "86 barras"), extraia o número. Use null se não houver.
+
+                            IMPORTANTE (OVERRIDE):
+                            - Se o JSON retornar qualquer manualPrice* (por exemplo manualPriceForro, manualPriceAcabamento, manualPriceEstrutura, manualPriceParafuso, manualPriceMaoDeObra, manualPriceFrete) com um valor numérico > 0, marque o checkbox de "Manual" correspondente na UI (ex: override-forro-m2, override-acabamento, override-estrutura, override-parafuso, override-mao-de-obra, override-frete) e preencha o input de preço com o valor retornado. Isso sinaliza que o preço deve ser usado como override manual.
+
                             Analise o texto abaixo:
                             ---
                             ${inputText}
@@ -2090,6 +2101,30 @@
                     priceEstruturaInput.value = parseFloat(data.manualPriceEstrutura).toFixed(2);
                     overrideEstrutura.checked = true;
                     manualPriceSet = true;
+                }
+
+                // Novos campos: preços manuais para parafuso, mão de obra e frete
+                if (data.manualPriceParafuso && data.manualPriceParafuso > 0) {
+                    priceParafusoInput.value = parseFloat(data.manualPriceParafuso).toFixed(2);
+                    overrideParafuso.checked = true;
+                    manualPriceSet = true;
+                }
+
+                if (data.manualPriceMaoDeObra && data.manualPriceMaoDeObra > 0) {
+                    priceMaoDeObraInput.value = parseFloat(data.manualPriceMaoDeObra).toFixed(2);
+                    overrideMaoDeObra.checked = true;
+                    manualPriceSet = true;
+                }
+
+                if (data.manualPriceFrete && data.manualPriceFrete > 0) {
+                    priceFreteInput.value = parseFloat(data.manualPriceFrete).toFixed(2);
+                    overrideFrete.checked = true;
+                    manualPriceSet = true;
+                }
+
+                // Quantidade manual de estrutura (se fornecida)
+                if (data.manualQtyEstrutura && data.manualQtyEstrutura > 0) {
+                    document.getElementById('calc-qty-estrutura-manual').value = data.manualQtyEstrutura;
                 }
 
 
