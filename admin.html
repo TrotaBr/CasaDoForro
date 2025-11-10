@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Configuração da Calculadora</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="config.js"></script>
+    
+    <style type="text/tailwindcss">
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        .container {
+            @apply max-w-4xl mx-auto p-4 md:p-8;
+        }
+        
+        /* Estilos Padrão dos Inputs (do seu index.html) */
+        .input-dark {
+            @apply block w-full px-3 py-2 border border-slate-600 rounded-md shadow-sm text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-cyan-400 focus:border-cyan-400 bg-slate-700;
+        }
+        select.input-dark {
+             @apply text-slate-100;
+        }
+        select.input-dark option {
+            color: #000000;
+            background-color: #ffffff;
+        }
+
+        /* Botões */
+        .btn {
+            @apply inline-block px-4 py-2 border border-transparent rounded-md shadow-sm font-medium text-white transition-colors duration-150;
+        }
+        .btn-sm {
+             @apply px-3 py-1 text-sm;
+        }
+        .btn-primary { @apply bg-cyan-600 hover:bg-cyan-500; }
+        .btn-secondary { @apply bg-indigo-600 hover:bg-indigo-500; }
+        .btn-green { @apply bg-green-600 hover:bg-green-500; }
+        .btn-red { @apply bg-red-700 hover:bg-red-600; }
+        .btn-gray { @apply bg-slate-600 hover:bg-slate-500; }
+
+        /* Estilos do Formulário */
+        .form-section {
+            @apply p-4 md:p-6 bg-slate-800 border border-slate-700 rounded-lg shadow-lg mb-6;
+        }
+        .form-section-title {
+            @apply text-xl font-bold text-cyan-400 border-b border-slate-600 pb-2 mb-4;
+        }
+        .form-label {
+            @apply block text-sm font-semibold text-slate-300 mb-1;
+        }
+        .form-grid {
+             @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+        }
+        .form-grid-full {
+             @apply col-span-1 md:col-span-2;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200">
+
+    <div class="container">
+        
+        <div id="login-section" class="max-w-md mx-auto bg-slate-800 p-6 rounded-lg shadow-lg border border-slate-700">
+            <h1 class="text-2xl font-bold mb-4 text-white">Acesso Administrativo</h1>
+            <p class="text-slate-400 mb-4">Digite a senha definida no arquivo `config.js` para editar.</p>
+            <div class="flex space-x-2">
+                <input type="password" id="password-input" class="input-dark flex-grow">
+                <button id="login-btn" class="btn btn-primary">Entrar</button>
+            </div>
+            <p id="login-error" class="text-red-400 font-medium text-sm mt-2 hidden">Senha incorreta!</p>
+        </div>
+
+        <div id="editor-section" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-3xl font-bold text-cyan-400">Editor de Configuração</h1>
+                <a href="index.html" class="btn btn-gray btn-sm">Voltar para Calculadora</a>
+            </div>
+            
+            <form id="config-form" class="space-y-6">
+
+                <div class="form-section">
+                    <h2 class="form-section-title">Segurança</h2>
+                    <div id="admin-password-section">
+                        </div>
+                </div>
+
+                <div class="form-section">
+                    <h2 class="form-section-title">Preços Padrão (Passo 4)</h2>
+                    <div id="standard-prices-section" class="form-grid">
+                        </div>
+                </div>
+
+                <div class="form-section">
+                    <h2 class="form-section-title">Modelos de Forro e Estoque (Passo 2)</h2>
+                    <div id="forro-models-section" class="space-y-6">
+                        <div id="forro-groups-container" class="space-y-6">
+                            </div>
+                        <button type="button" id="add-group-btn" class="btn btn-secondary">+ Adicionar Grupo de Forros</button>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h2 class="form-section-title">Estoque Padrão</h2>
+                    <p class="text-sm text-slate-400 mb-2">Usado para qualquer modelo de forro que não esteja listado na seção de estoque acima.</p>
+                    <div id="default-stock-section">
+                        </div>
+                </div>
+
+            </form>
+            
+            <div id="feedback-message" class="feedback hidden"></div>
+
+            <div class="mt-6 p-4 bg-slate-800 rounded-lg border border-slate-700">
+                <h3 class="text-lg font-semibold text-amber-400 mb-2">Salvar Alterações</h3>
+                <p class="text-sm text-slate-400 mb-4">Lembre-se: Após gerar o novo arquivo, você deve **baixar e substituir o `config.js`** na pasta do seu projeto.</p>
+                <div class="flex flex-wrap gap-4">
+                    <button id="save-btn" class="btn btn-primary">Gerar/Salvar Alterações</button>
+                    <button id="download-btn" class="btn btn-green hidden">Download config.js</button>
+                    <button id="copy-btn" class="btn btn-secondary hidden">Copiar para Área de Transferência</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- ELEMENTOS PRINCIPAIS ---
+            const loginSection = document.getElementById('login-section');
+            const editorSection = document.getElementById('editor-section');
+            const passwordInput = document.getElementById('password-input');
+            const loginBtn = document.getElementById('login-btn');
+            const loginError = document.getElementById('login-error');
+            
+            const configForm = document.getElementById('config-form');
+            const saveBtn = document.getElementById('save-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const copyBtn = document.getElementById('copy-btn');
+            const feedback = document.getElementById('feedback-message');
+            
+            // --- CONTAINERS DA UI ---
+            const passwordSection = document.getElementById('admin-password-section');
+            const pricesSection = document.getElementById('standard-prices-section');
+            const modelsSection = document.getElementById('forro-models-section');
+            const groupsContainer = document.getElementById('forro-groups-container');
+            const addGroupBtn = document.getElementById('add-group-btn');
+            const defaultStockSection = document.getElementById('default-stock-section');
+
+            let currentConfigData = ''; // Para salvar o texto final do config.js
+
+            // --- 1. LÓGICA DE LOGIN ---
+            function attemptLogin() {
+                if (passwordInput.value === APP_CONFIG.adminPassword) {
+                    showEditor();
+                } else {
+                    loginError.classList.remove('hidden');
+                }
+            }
+            loginBtn.addEventListener('click', attemptLogin);
+            passwordInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') attemptLogin();
+            });
+
+            // --- 2. CONSTRUÇÃO DA UI ---
+            function showEditor() {
+                loginSection.classList.add('hidden');
+                editorSection.classList.remove('hidden');
+
+                // Limpa containers (caso seja um relogin)
+                passwordSection.innerHTML = '';
+                pricesSection.innerHTML = '';
+                groupsContainer.innerHTML = '';
+                defaultStockSection.innerHTML = '';
+
+                // Constrói as seções da UI
+                buildPasswordSection();
+                buildPricesSection();
+                buildModelsSection();
+                buildDefaultStockSection();
+            }
+
+            function buildPasswordSection() {
+                passwordSection.innerHTML = `
+                    <div>
+                        <label for="admin-password" class="form-label">Nova Senha</label>
+                        <input type="text" id="admin-password" class="input-dark" value="${APP_CONFIG.adminPassword}">
+                    </div>
+                `;
+            }
+
+            function buildPricesSection() {
+                // Transforma o objeto de preços em HTML
+                let pricesHTML = '';
+                for (const key in APP_CONFIG.standardPrices) {
+                    pricesHTML += `
+                        <div>
+                            <label for="price-${key}" class="form-label">${key.replace(/_/g, ' ')}</label>
+                            <input type="number" step="0.01" id="price-${key}" class="input-dark price-input" value="${APP_CONFIG.standardPrices[key]}">
+                        </div>
+                    `;
+                }
+                pricesSection.innerHTML = pricesHTML;
+            }
+
+            function buildModelsSection() {
+                APP_CONFIG.models.forEach((group, groupIndex) => {
+                    const groupElement = createForroGroupHTML(group.group, groupIndex);
+                    const itemsContainer = groupElement.querySelector('.forro-items-container');
+                    
+                    group.items.forEach((item, itemIndex) => {
+                        const stockValue = APP_CONFIG.stock[item.value] || APP_CONFIG.stock["DEFAULT"];
+                        const itemElement = createForroItemHTML(item.value, item.price, item.category, stockValue.join(', '), groupIndex, itemIndex);
+                        itemsContainer.appendChild(itemElement);
+                    });
+                    
+                    groupsContainer.appendChild(groupElement);
+                });
+            }
+            
+            function buildDefaultStockSection() {
+                defaultStockSection.innerHTML = `
+                    <div>
+                        <label for="stock-DEFAULT" class="form-label">Estoque Padrão (separado por vírgula)</label>
+                        <input type="text" id="stock-DEFAULT" class="input-dark" value="${(APP_CONFIG.stock["DEFAULT"] || [6]).join(', ')}">
+                    </div>
+                `;
+            }
+
+            // --- 3. FUNÇÕES DE TEMPLATE (HTML DINÂMICO) ---
+            
+            function createForroGroupHTML(groupName, groupIndex) {
+                const element = document.createElement('div');
+                element.className = 'forro-group p-4 bg-slate-700 rounded-lg border border-slate-600';
+                element.dataset.index = groupIndex;
+                element.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex-grow mr-4">
+                            <label class="form-label">Nome do Grupo</label>
+                            <input type="text" class="input-dark group-name" value="${groupName}">
+                        </div>
+                        <button type="button" class="btn btn-red btn-sm remove-group-btn">Remover Grupo</button>
+                    </div>
+                    <div class="forro-items-container space-y-3 pl-4 border-l-2 border-slate-500">
+                        </div>
+                    <button type="button" class="btn btn-primary btn-sm mt-4 add-item-btn">+ Adicionar Modelo a este Grupo</button>
+                `;
+                return element;
+            }
+
+            function createForroItemHTML(value, price, category, stock, groupIndex, itemIndex) {
+                const element = document.createElement('div');
+                element.className = 'forro-item p-3 bg-slate-800 rounded-md shadow-sm grid grid-cols-1 md:grid-cols-5 gap-3';
+                element.dataset.index = itemIndex;
+                
+                element.innerHTML = `
+                    <div class="md:col-span-2">
+                        <label class="form-label">Nome do Modelo (Valor)</label>
+                        <input type="text" class="input-dark forro-item-value" value="${value}">
+                    </div>
+                    <div>
+                        <label class="form-label">Preço (m²)</label>
+                        <input type="number" step="0.01" class="input-dark forro-item-price" value="${price}">
+                    </div>
+                    <div>
+                        <label class="form-label">Categoria (Cor)</label>
+                        <select class="input-dark forro-item-category">
+                            <option value="Branco" ${category === 'Branco' ? 'selected' : ''}>Branco</option>
+                            <option value="Colorido" ${category === 'Colorido' ? 'selected' : ''}>Colorido</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-5">
+                        <label class="form-label">Estoque (Ex: 4, 5, 6, 7.5)</label>
+                        <div class="flex">
+                            <input type="text" class="input-dark forro-item-stock flex-grow" value="${stock}">
+                            <button type="button" class="btn btn-red btn-sm remove-item-btn ml-2">Remover</button>
+                        </div>
+                    </div>
+                `;
+                return element;
+            }
+
+            // --- 4. EVENT LISTENERS DINÂMICOS (Adicionar/Remover) ---
+
+            // Adicionar Grupo
+            addGroupBtn.addEventListener('click', () => {
+                const newIndex = groupsContainer.children.length;
+                const newGroup = createForroGroupHTML(`Novo Grupo ${newIndex + 1}`, newIndex);
+                groupsContainer.appendChild(newGroup);
+            });
+
+            // Adicionar Modelo ou Remover (Usa delegação de eventos)
+            modelsSection.addEventListener('click', (e) => {
+                // Adicionar Modelo
+                if (e.target.classList.contains('add-item-btn')) {
+                    const groupElement = e.target.closest('.forro-group');
+                    const itemsContainer = groupElement.querySelector('.forro-items-container');
+                    const groupIndex = groupElement.dataset.index;
+                    const itemIndex = itemsContainer.children.length;
+                    
+                    const newItem = createForroItemHTML("Novo Modelo", 0.00, "Branco", "6", groupIndex, itemIndex);
+                    itemsContainer.appendChild(newItem);
+                }
+                
+                // Remover Grupo
+                if (e.target.classList.contains('remove-group-btn')) {
+                    if (confirm('Tem certeza que deseja remover este grupo e todos os seus modelos?')) {
+                        e.target.closest('.forro-group').remove();
+                    }
+                }
+                
+                // Remover Modelo
+                if (e.target.classList.contains('remove-item-btn')) {
+                    e.target.closest('.forro-item').remove();
+                }
+            });
+
+            // --- 5. LÓGICA DE SALVAMENTO (LER A UI E GERAR O ARQUIVO) ---
+
+            saveBtn.addEventListener('click', () => {
+                try {
+                    // 1. Lê todos os campos da UI e transforma em um objeto JS
+                    const newConfig = readUIToConfig();
+                    
+                    // 2. Transforma o objeto JS em texto formatado
+                    const newConfigText = JSON.stringify(newConfig, null, 4);
+                    
+                    // 3. Monta o conteúdo final do arquivo .js
+                    const fullFileContent = `const APP_CONFIG = ${newConfigText};`;
+                    currentConfigData = fullFileContent;
+                    
+                    // 4. Mostra feedback e botões de download/cópia
+                    showFeedback(true, 'Configuração válida! Você já pode baixar ou copiar.');
+                    downloadBtn.classList.remove('hidden');
+                    copyBtn.classList.remove('hidden');
+
+                } catch (e) {
+                    console.error("Erro ao salvar:", e);
+                    showFeedback(false, `Erro ao processar os dados: ${e.message}. Verifique os campos.`);
+                    downloadBtn.classList.add('hidden');
+                    copyBtn.classList.add('hidden');
+                }
+            });
+
+            function readUIToConfig() {
+                const newConfig = {
+                    adminPassword: "",
+                    standardPrices: {},
+                    models: [],
+                    stock: {}
+                };
+
+                // 1. Ler Senha
+                newConfig.adminPassword = document.getElementById('admin-password').value || "admin123";
+
+                // 2. Ler Preços Padrão
+                pricesSection.querySelectorAll('.price-input').forEach(input => {
+                    const key = input.id.replace('price-', '');
+                    newConfig.standardPrices[key] = parseFloat(input.value) || 0;
+                });
+                
+                // 3. Ler Modelos e Estoque
+                groupsContainer.querySelectorAll('.forro-group').forEach(groupEl => {
+                    const groupName = groupEl.querySelector('.group-name').value;
+                    const newGroup = {
+                        group: groupName,
+                        items: []
+                    };
+
+                    groupEl.querySelectorAll('.forro-item').forEach(itemEl => {
+                        const value = itemEl.querySelector('.forro-item-value').value;
+                        const price = parseFloat(itemEl.querySelector('.forro-item-price').value) || 0;
+                        const category = itemEl.querySelector('.forro-item-category').value;
+                        
+                        // Processa o texto do estoque para um array de números
+                        const stockText = itemEl.querySelector('.forro-item-stock').value;
+                        const stockArray = stockText.split(',')
+                                                    .map(s => s.trim())
+                                                    .filter(s => s.length > 0)
+                                                    .map(Number)
+                                                    .filter(n => !isNaN(n));
+                        
+                        if (value) {
+                            // Adiciona ao grupo de modelos
+                            newGroup.items.push({ value, price, category });
+                            // Adiciona ao mapa de estoque
+                            newConfig.stock[value] = stockArray.length > 0 ? stockArray : [6];
+                        }
+                    });
+                    
+                    if (newGroup.items.length > 0) {
+                        newConfig.models.push(newGroup);
+                    }
+                });
+                
+                // 4. Ler Estoque Padrão
+                const defaultStockText = document.getElementById('stock-DEFAULT').value;
+                newConfig.stock["DEFAULT"] = defaultStockText.split(',')
+                                                            .map(s => s.trim())
+                                                            .filter(s => s.length > 0)
+                                                            .map(Number)
+                                                            .filter(n => !isNaN(n));
+                if (newConfig.stock["DEFAULT"].length === 0) {
+                    newConfig.stock["DEFAULT"] = [6];
+                }
+
+                return newConfig;
+            }
+
+
+            // --- 6. BOTÕES DE DOWNLOAD/COPIAR E FEEDBACK ---
+            
+            downloadBtn.addEventListener('click', () => {
+                const blob = new Blob([currentConfigData], { type: 'text/javascript' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'config.js';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showFeedback(true, 'Arquivo `config.js` baixado! Substitua o antigo.');
+            });
+
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(currentConfigData).then(() => {
+                    showFeedback(true, 'Copiado para a área de transferência! Cole no seu arquivo `config.js`.');
+                }).catch(err => {
+                    showFeedback(false, 'Falha ao copiar.');
+                });
+            });
+
+            function showFeedback(success, message) {
+                feedback.innerHTML = message; // Use innerHTML para caso precise
+                feedback.classList.remove('hidden', 'feedback-success', 'feedback-error');
+                feedback.classList.add(success ? 'feedback-success' : 'feedback-error');
+                
+                 // Remove a mensagem após 5 segundos
+                setTimeout(() => {
+                    feedback.classList.add('hidden');
+                }, 5000);
+            }
+
+        });
+    </script>
+</body>
+</html>
