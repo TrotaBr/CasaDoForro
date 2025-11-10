@@ -1,0 +1,2168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Orçamento Forro PVC - Casa do Forro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <script src="config.js"></script>
+
+    <style type="text/tailwindcss">
+        /* --- ESTILOS DO STEPPER (NOVO E MODERNO V3) --- */
+        .stepper-item {
+            @apply flex items-center relative;
+        }
+        .stepper-dot {
+            @apply w-8 h-8 flex items-center justify-center rounded-full font-bold text-sm transition-all duration-300;
+        }
+        .stepper-line {
+            @apply h-1 flex-1 transition-all duration-300;
+        }
+        .stepper-label {
+            @apply absolute top-10 w-max text-xs font-medium text-center transition-all duration-300;
+        }
+
+        /* Estado Padrão (Futuro) */
+        .stepper-item .stepper-dot {
+            @apply bg-slate-700 text-slate-400 border-2 border-slate-700;
+        }
+        .stepper-item .stepper-line {
+            @apply bg-slate-700;
+        }
+        .stepper-item .stepper-label {
+            @apply text-slate-400;
+        }
+
+        /* Estado Concluído (Verde) */
+        .stepper-item.completed {
+            @apply cursor-pointer;
+        }
+        .stepper-item.completed .stepper-dot {
+            @apply bg-green-600 text-white border-green-600;
+        }
+        .stepper-item.completed .stepper-line {
+            @apply bg-green-600;
+        }
+        .stepper-item.completed .stepper-label {
+            @apply text-slate-300;
+        }
+        .stepper-item.completed:hover .stepper-dot {
+            @apply bg-green-500 border-green-500;
+        }
+
+        /* Estado Ativo (Ciano) */
+        .stepper-item.active .stepper-dot {
+            @apply bg-cyan-600 text-white border-2 border-cyan-600 ring-4 ring-cyan-600 ring-opacity-30;
+        }
+        .stepper-item.active .stepper-line {
+            @apply bg-green-600; /* Linha anterior fica verde */
+        }
+        .stepper-item.active .stepper-label {
+            @apply text-cyan-400 font-bold;
+        }
+        
+        /* --- ESTILOS GERAIS (Paleta Slate V3) --- */
+        
+        /* Inputs Padrão */
+        .input-dark {
+            @apply bg-slate-700 border-slate-600 text-slate-100 placeholder-slate-400 focus:ring-cyan-400 focus:border-cyan-400;
+        }
+        
+        /* Inputs Manuais (Read-only) */
+        .manual-price-input:read-only {
+            @apply bg-slate-800 text-slate-400 cursor-not-allowed border-slate-700;
+        }
+        /* Inputs Manuais (Ativos) */
+        .manual-price-input:not(:read-only) {
+            @apply bg-slate-700 border-slate-600;
+        }
+
+        /* CORREÇÃO DROPDOWN (V3) */
+        select.input-dark {
+            @apply text-slate-100; 
+        }
+        /* Força o texto das OPÇÕES no menu popup a ser PRETO, */
+        /* pois o menu popup do SO (Windows, etc) é geralmente BRANCO. */
+        select.input-dark option {
+            color: #000000;
+            background-color: #ffffff;
+        }
+        
+        /* Checkbox Override (Âmbar) */
+        .override-checkbox {
+            @apply h-4 w-4 text-amber-500 border-slate-600 rounded focus:ring-amber-400 bg-slate-700;
+        }
+
+        /* --- ESTILOS DE IMPRESSÃO (ATUALIZADO) --- */
+        @media print {
+            /* 1. Oculta tudo por padrão */
+            body > * {
+                visibility: hidden;
+            }
+            
+            /* 2. Mostra apenas o wrapper do resultado e o força a preencher a página */
+            #calc-results-wrapper, #calc-results-wrapper * {
+                visibility: visible;
+                color: #000 !important; /* Força texto preto */
+            }
+            #calc-results-wrapper {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 20px;
+                background-color: #fff !important; /* Força fundo branco */
+                border: none !important;
+                box-shadow: none !important;
+            }
+            
+            /* 3. Remove fundos e bordas desnecessários dentro do wrapper */
+            #calc-results-wrapper .bg-slate-700,
+            #calc-results-wrapper .bg-slate-800,
+            #calc-results-wrapper .bg-slate-900,
+            #calc-results-wrapper .border-slate-600,
+            #calc-results-wrapper .border-slate-700,
+            #calc-results-wrapper .shadow-inner,
+            #calc-results-wrapper .divide-slate-700,
+            #calc-results-wrapper .shadow-lg {
+                background-color: #fff !important;
+                border: none !important;
+                box-shadow: none !important;
+                border-color: #ccc !important; /* Deixa as linhas de divisão mais claras */
+            }
+            
+            /* 4. Força títulos a serem pretos */
+            #calc-results-wrapper h3,
+            #calc-results-wrapper span,
+            #calc-results-wrapper p,
+            #calc-results-wrapper h4 {
+                color: #000 !important;
+            }
+            #calc-results-wrapper .text-cyan-400 {
+                 color: #000 !important;
+                 font-weight: bold;
+            }
+
+            /* 5. Oculta elementos que o usuário NÃO quer na impressão */
+            #print-button-container,
+            #calc-atencao,
+            #calc-error {
+                display: none !important;
+            }
+
+            /* 6. Oculta os itens do "Resumo de Quantidades" (PEDIDO DO USUÁRIO) */
+            #calc-output-comodos-wrapper,
+            #calc-output-perimetro-wrapper,
+            #calc-output-moldura-wrapper,
+            #calc-output-cantos-internos-wrapper,
+            #calc-output-perfil-z-wrapper,
+            #calc-output-parafusos-wrapper {
+                display: none !important;
+            }
+
+            /* 7. Garante que os itens de Custo (que estão em wrappers) fiquem visíveis */
+            .p-2.bg-slate-700 {
+                padding: 4px 0 !important;
+            }
+            
+            /* 8. Estiliza a caixa de Custo Total */
+            #calc-cost-total {
+                font-size: 1.25rem;
+                font-weight: bold;
+            }
+            .bg-slate-900.p-4 {
+                 padding-top: 10px !important;
+                 padding-bottom: 10px !important;
+                 border-top: 2px solid #000 !important;
+                 border-bottom: 2px solid #000 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 font-sans text-slate-200 min-h-screen">
+
+    <div id="app-container" class="max-w-6xl mx-auto p-4 md:p-8">
+
+        <header class="mb-8 flex items-center justify-between border-b border-slate-700 pb-6">
+            <div class="flex items-center space-x-6">
+                <img src="casadoforrologo.png" alt="Logo Casa do Forro PVC" class="w-16 h-16 rounded-full object-cover shadow-lg">
+                <div>
+                    <h1 class="text-3xl font-bold text-cyan-400">Calculadora de Orçamento Rápido</h1>
+                    <p class="text-lg text-slate-400">Casa do Forro - Orçamento Profissional</p>
+                </div>
+            </div>
+            <a href="admin.html" target="_blank" class="text-sm text-slate-500 hover:text-cyan-400 transition-colors">
+                Admin
+            </a>
+        </header>
+
+        <main id="content-area">
+            
+            <section id="step-calculator" class="p-6 bg-slate-900 rounded-lg shadow-xl">
+                
+                <nav id="stepper" data-completed-step="0" class="mb-12 pt-2 px-2 flex justify-between">
+                    
+                    <button id="stepper-1" class="stepper-item flex-1 active">
+                        <span class="stepper-dot">1</span>
+                        <span class="stepper-label -translate-x-1/2 left-1/2">Cliente</span>
+                    </button>
+                    
+                    <div class="stepper-line my-auto"></div>
+                    
+                    <button id="stepper-2" class="stepper-item flex-1">
+                        <span class="stepper-dot">2</span>
+                        <span class="stepper-label -translate-x-1/2 left-1/2">Materiais</span>
+                    </button>
+                    
+                    <div class="stepper-line my-auto"></div>
+                    
+                    <button id="stepper-3" class="stepper-item flex-1">
+                        <span class="stepper-dot">3</span>
+                        <span class="stepper-label -translate-x-1/2 left-1/2">Medição</span>
+                    </button>
+                    
+                    <div class="stepper-line my-auto"></div>
+
+                    <button id="stepper-4" class="stepper-item flex-1">
+                        <span class="stepper-dot">4</span>
+                        <span class="stepper-label -translate-x-1/2 left-1/2">Custos</span>
+                    </button>
+                </nav>
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                    
+                    <div class="space-y-4 lg:col-span-3">
+                        
+                        <div id="calc-step-1" class="step-content space-y-3 p-5 bg-slate-800 rounded-lg border border-slate-700 shadow-lg">
+                            <h4 class="text-xl font-semibold text-white border-b border-slate-600 pb-2 mb-3">Passo 1: Dados do Cliente</h4>
+                            
+                            <div class="space-y-3 p-4 bg-slate-900 rounded-lg border border-slate-700">
+                                <h5 class="text-lg font-semibold text-cyan-400">Preenchimento Rápido (IA)</h5>
+                                <p class="text-xs text-slate-400">Cole o texto do cliente (ex: do WhatsApp) para preencher os campos automaticamente.</p>
+                                
+                                <div>
+                                    <label for="gemini-input-text" class="block text-sm font-semibold text-slate-300">Texto para Analisar</label>
+                                    <textarea id="gemini-input-text" rows="4" placeholder="Ex: Garagem 6x6,20 forro 8mm 30,00 o metro&#10;Varanda 2,5x5,00&#10;Cliente: Francisco...&#10;Serviço completo com 7 brs perfil U 45,00, 200 parafusos." class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600"></textarea>
+                                </div>
+                                
+                                <button type="button" id="gemini-parse-btn" class="w-full text-sm bg-indigo-600 text-white font-medium px-4 py-2 rounded-md hover:bg-indigo-500 transition-colors border border-indigo-500">
+                                    Analisar e Preencher
+                                </button>
+                                <p id="gemini-feedback" class="text-sm text-center font-medium hidden"></p>
+                            </div>
+                            <h4 class="text-xl font-semibold text-white border-b border-slate-600 pb-2 mb-3 pt-4">Dados Manuais</h4>
+                            <div>
+                                <label for="calc-client-name" class="block text-sm font-semibold text-slate-300">Nome do Cliente</label>
+                                <input type="text" id="calc-client-name" placeholder="Nome Completo" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                            </div>
+                            <div>
+                                <label for="calc-client-address" class="block text-sm font-semibold text-slate-300">Endereço (Rua, N°, Bairro)</label>
+                                <input type="text" id="calc-client-address" placeholder="Ex: Rua Paraná, 123, Centro" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                            </div>
+                            <div>
+                                <label for="calc-client-phone" class="block text-sm font-semibold text-slate-300">Telefone</label>
+                                <input type="text" id="calc-client-phone" placeholder="(XX) XXXXX-XXXX" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                            </div>
+                             <div>
+                                <label for="calc-client-cpf" class="block text-sm font-semibold text-slate-300">CPF/CNPJ</label>
+                                <input type="text" id="calc-client-cpf" placeholder="CPF ou CNPJ para orçamento" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                            </div>
+                            
+                            <div>
+                                <label for="calc-client-obs" class="block text-sm font-semibold text-slate-300">Observações</label>
+                                <textarea id="calc-client-obs" placeholder="Ex: Cliente prefere instalação na parte da manhã, verificar viga no local..." rows="3" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600"></textarea>
+                            </div>
+
+                            <div class="flex justify-end space-x-2 pt-2">
+                                <button id="step-1-next" class="text-sm bg-cyan-600 text-white font-medium px-5 py-2 rounded-md hover:bg-cyan-500 transition-colors">
+                                    Próximo Passo &rarr;
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="calc-step-2" class="step-content space-y-4 p-5 bg-slate-800 rounded-lg border border-slate-700 shadow-lg hidden">
+                            <h4 class="text-xl font-semibold text-white border-b border-slate-600 pb-2 mb-3">Passo 2: Opções de Material</h4>
+                            
+                            <div>
+                                <label for="calc-largura-lamina" class="block text-sm font-semibold text-slate-300">Largura da Lâmina de PVC (Cálculo)</label>
+                                <select id="calc-largura-lamina" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                                    <option value="0.20" selected>200mm (0.20m)</option>
+                                    <option value="0.10">100mm (0.10m)</option>
+                                    <option value="0.25">250mm (0.25m)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="calc-modelo-forro" class="block text-sm font-semibold text-slate-300">Modelo do Forro</label>
+                                <select id="calc-modelo-forro" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                                    <option value="" data-price="0" data-category="Branco" selected>Selecione um modelo</option>
+                                    </select>
+                            </div>
+                            
+                            <div>
+                                <label for="calc-tipo-acabamento" class="block text-sm font-semibold text-slate-300">Tipo de Acabamento (Moldura)</label>
+                                <select id="calc-tipo-acabamento" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                                    <option value="Meia Cana" selected>Meia Cana</option>
+                                    <option value="Perfil U">Perfil U</option>
+                                    <option value="Sem Acabamentos">Sem Acabamentos</option>
+                                </select>
+                            </div>
+
+                            <hr class="border-slate-600">
+
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="check-perfil-z" checked class="h-4 w-4 text-cyan-600 border-slate-600 rounded focus:ring-cyan-500 bg-slate-700">
+                                <label for="check-perfil-z" class="text-sm font-medium text-slate-300">Incluir Estrutura (Perfil Z/Metalon) no cálculo de Qtd.</label>
+                            </div>
+
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="check-parafusos" checked class="h-4 w-4 text-cyan-600 border-slate-600 rounded focus:ring-cyan-500 bg-slate-700">
+                                <label for="check-parafusos" class="text-sm font-medium text-slate-300">Incluir Itens de Fixação (Parafusos) no cálculo de Qtd.</Llabel>
+                            </div>
+
+
+                            <div class="flex justify-between space-x-2 pt-2">
+                                <button id="step-2-prev" class="text-sm bg-slate-600 text-white font-medium px-5 py-2 rounded-md hover:bg-slate-500 transition-colors">
+                                    &larr; Voltar
+                                </button>
+                                <button id="step-2-next" class="text-sm bg-cyan-600 text-white font-medium px-5 py-2 rounded-md hover:bg-cyan-500 transition-colors">
+                                    Próximo Passo &rarr;
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="calc-step-3" class="step-content space-y-4 p-5 bg-slate-800 rounded-lg border border-slate-700 shadow-lg hidden">
+                            <h4 class="text-xl font-semibold text-white border-b border-slate-600 pb-2 mb-3">Passo 3: Medição</h4>
+                            
+                            <div class="space-y-2 p-3 bg-slate-700 rounded-lg border border-slate-600">
+                                <h5 class="font-semibold text-sm text-white">Tipo de Medição</h5>
+                                <div class="flex items-center space-x-4">
+                                    <div class="flex items-center">
+                                        <input type="radio" id="measurement-type-rooms" name="measurement-type" value="rooms" checked class="h-4 w-4 text-cyan-600 border-slate-500 focus:ring-cyan-500 bg-slate-700">
+                                        <label for="measurement-type-rooms" class="ml-2 block text-sm font-medium text-slate-300">Medição por Cômodo</label>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <input type="radio" id="measurement-type-manual" name="measurement-type" value="manual" class="h-4 w-4 text-cyan-600 border-slate-500 focus:ring-cyan-500 bg-slate-700">
+                                        <label for="measurement-type-manual" class="ml-2 block text-sm font-medium text-slate-300">Inserir Totais Manuais</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="measurement-rooms-content">
+                                <div id="comodos-container" class="space-y-4">
+                                    <div class="comodo-item border border-slate-600 p-4 rounded-lg space-y-3 bg-slate-700 relative">
+                                        <h4 class="font-semibold text-white">Cômodo 1</h4>
+                                        
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300">Comprimento (metros)</label>
+                                            <input type="number" placeholder="Ex: 5 (Arredonda para 0.50)" class="comodo-comprimento manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300">Largura (metros)</label>
+                                            <input type="number" placeholder="Ex: 3.5 (Arredonda para 0.20)" class="comodo-largura manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300">Sentido da Instalação</label>
+                                            <select class="comodo-sentido manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                                                <option value="comprimento">Ao longo do COMPRIMENTO</option>
+                                                <option value="largura">Ao longo da LARGURA</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button id="add-comodo-btn" class="w-full text-sm bg-cyan-800 text-white font-medium px-4 py-2 rounded-md hover:bg-cyan-700 transition-colors border border-cyan-700 mt-4">
+                                    + Adicionar outro Cômodo
+                                </button>
+                            </div>
+
+                            <div id="measurement-manual-content" class="hidden space-y-3 border border-slate-600 p-4 rounded-lg bg-slate-700">
+                                <div>
+                                    <label for="calc-manual-area" class="block text-sm font-semibold text-slate-300">Área Total (m²)</label>
+                                    <input type="number" id="calc-manual-area" placeholder="Ex: 25.5" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                                </div>
+                                <div>
+                                    <label for="calc-manual-perimetro" class="block text-sm font-semibold text-slate-300">Perímetro Total (metros)</label>
+                                    <input type="number" id="calc-manual-perimetro" placeholder="Ex: 22" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                                </div>
+                                <p class="text-xs text-slate-500">Nota: O cálculo de Cantos Internos e Detalhes de Lâminas são desativados no modo manual.</p>
+                            </div>
+                            
+                            <div class="flex justify-between space-x-2 pt-2">
+                                <button id="step-3-prev" class="text-sm bg-slate-600 text-white font-medium px-5 py-2 rounded-md hover:bg-slate-500 transition-colors">
+                                    &larr; Voltar
+                                </button>
+                                <button id="step-3-next" class="text-sm bg-cyan-600 text-white font-medium px-5 py-2 rounded-md hover:bg-cyan-500 transition-colors">
+                                    Próximo Passo &rarr;
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="calc-step-4" class="step-content space-y-4 hidden">
+                            
+                            <div class="space-y-3 p-5 bg-slate-800 rounded-lg border border-slate-700 shadow-lg">
+                                <h4 class="text-xl font-semibold text-white border-b border-slate-600 pb-2 mb-3">Passo 4: Custos de Material</h4>
+                                
+                                <div>
+                                    <div class="flex items-center justify-between space-x-2">
+                                        <label for="calc-price-forro-m2" class="block text-sm font-semibold text-slate-300 flex-grow">Preço do Forro (por m²) <span class="text-cyan-400">(Dinâmico)</span></label>
+                                        <div class="flex items-center space-x-2">
+                                            <label for="override-forro-m2" class="text-xs font-medium text-slate-300 flex-none">Manual:</label>
+                                            <input type="checkbox" id="override-forro-m2" class="override-checkbox">
+                                        </div>
+                                    </div>
+                                    <input type="number" id="calc-price-forro-m2" placeholder="R$ 0,00" step="0.01" value="0.00" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none" readonly>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <div class="flex items-center justify-between space-x-2">
+                                        <label for="calc-price-acabamento" class="block text-sm font-semibold text-slate-300 flex-grow">Preço Acabamento (6m) <span class="text-cyan-400">(Dinâmico)</span></label>
+                                        <div class="flex items-center space-x-2">
+                                            <label for="override-acabamento" class="text-xs font-medium text-slate-300 flex-none">Manual:</label>
+                                            <input type="checkbox" id="override-acabamento" class="override-checkbox">
+                                        </div>
+                                    </div>
+                                    <input type="number" id="calc-price-acabamento" placeholder="R$ 0,00" step="0.01" value="0.00" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none" readonly>
+                                </div>
+                                
+                                <div id="price-cantos-internos-wrapper" class="mt-4 hidden">
+                                    <div class="flex items-center space-x-2">
+                                        <input type="checkbox" id="include-cantos-internos" checked class="h-4 w-4 text-cyan-600 border-slate-600 rounded focus:ring-cyan-500 bg-slate-700">
+                                        <label for="include-cantos-internos" class="text-sm font-medium text-slate-300">Incluir Cantos Internos (Custo)</label>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between space-x-2 mt-1"> <label for="calc-price-cantos-internos" class="block text-sm font-semibold text-slate-300 flex-grow">Preço Canto Interno (Unidade) <span class="text-cyan-400">(Dinâmico)</span></label>
+                                        <div class="flex items-center space-x-2">
+                                            <label for="override-cantos-internos" class="text-xs font-medium text-slate-300 flex-none">Manual:</label>
+                                            <input type="checkbox" id="override-cantos-internos" class="override-checkbox">
+                                        </div>
+                                    </div>
+                                    <input type="number" id="calc-price-cantos-internos" placeholder="R$ 0,00" step="0.01" value="0.00" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none" readonly>
+                                </div>
+                                <div class="mt-4">
+                                    <div class="flex items-center space-x-2">
+                                        <input type="checkbox" id="include-estrutura" checked class="h-4 w-4 text-cyan-600 border-slate-600 rounded focus:ring-cyan-500 bg-slate-700">
+                                        <label for="include-estrutura" class="text-sm font-medium text-slate-300">Incluir Estrutura (Custo)</label>
+                                    </div>
+                                    <div class="flex items-center justify-between space-x-2 mt-1">
+                                        <label for="calc-price-estrutura" class="block text-sm font-semibold text-slate-300 flex-grow">Preço Barra Estrutura (3m)</label>
+                                        <div class="flex items-center space-x-2">
+                                            <label for="override-estrutura" class="text-xs font-medium text-slate-300 flex-none">Manual:</label>
+                                            <input type="checkbox" id="override-estrutura" class="override-checkbox">
+                                        </div>
+                                    </div>
+                                    <input type="number" id="calc-price-estrutura" placeholder="R$ 0,00" step="0.01" value="0.00" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none" readonly>
+                                </div>
+
+                                <div class="mt-4">
+                                    <div class="flex items-center space-x-2">
+                                        <input type="checkbox" id="include-parafuso" checked class="h-4 w-4 text-cyan-600 border-slate-600 rounded focus:ring-cyan-500 bg-slate-700">
+                                        <label for="include-parafuso" class="text-sm font-medium text-slate-300">Incluir Parafusos (Custo)</label>
+                                    </div>
+                                    <div class="flex items-center justify-between space-x-2 mt-1">
+                                        <label for="calc-price-parafuso" class="block text-sm font-semibold text-slate-300 flex-grow">Preço Parafuso (unidade)</label>
+                                        <div class="flex items-center space-x-2">
+                                            <label for="override-parafuso" class="text-xs font-medium text-slate-300 flex-none">Manual:</label>
+                                            <input type="checkbox" id="override-parafuso" class="override-checkbox">
+                                        </div>
+                                    </div>
+                                    <input type="number" id="calc-price-parafuso" placeholder="R$ 0,00" step="0.01" value="0.00" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none" readonly>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-3 p-5 bg-slate-800 rounded-lg border border-slate-700 shadow-lg">
+                                <h4 class="text-lg font-semibold text-white">Custos de Serviço</h4>
+                                <div class="mt-4">
+                                    <div class="flex items-center space-x-2">
+                                        <input type="checkbox" id="include-mao-de-obra" checked class="h-4 w-4 text-cyan-600 border-slate-600 rounded focus:ring-cyan-500 bg-slate-700">
+                                        <label for="include-mao-de-obra" class="text-sm font-medium text-slate-300">Incluir Mão de Obra</label>
+                                    </div>
+                                    <div class="flex items-center justify-between space-x-2 mt-1">
+                                        <label for="calc-price-mao-de-obra" class="block text-sm font-semibold text-slate-300 flex-grow">Custo Mão de Obra (por m²)</label>
+                                        <div class="flex items-center space-x-2">
+                                            <label for="override-mao-de-obra" class="text-xs font-medium text-slate-300 flex-none">Manual:</label>
+                                            <input type="checkbox" id="override-mao-de-obra" class="override-checkbox">
+                                        </div>
+                                    </div>
+                                    <input type="number" id="calc-price-mao-de-obra" placeholder="R$ 0,00" step="0.01" value="0.00" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none" readonly>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <div class="flex items-center space-x-2">
+                                        <input type="checkbox" id="include-frete" checked class="h-4 w-4 text-cyan-600 border-slate-600 rounded focus:ring-cyan-500 bg-slate-700">
+                                        <label for="include-frete" class="text-sm font-medium text-slate-300">Incluir Frete / Entrega</label>
+                                    </div>
+                                    <div class="flex items-center justify-between space-x-2 mt-1">
+                                        <label for="calc-price-frete" class="block text-sm font-semibold text-slate-300 flex-grow">Custo Frete (Valor Total)</label>
+                                        <div class="flex items-center space-x-2">
+                                            <label for="override-frete" class="text-xs font-medium text-slate-300 flex-none">Manual:</label>
+                                            <input type="checkbox" id="override-frete" class="override-checkbox">
+                                        </div>
+                                    </div>
+                                    <input type="number" id="calc-price-frete" placeholder="R$ 0,00" step="0.01" value="0.00" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none" readonly>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3 p-5 bg-slate-800 rounded-lg border border-slate-700 shadow-lg">
+                                <h4 class="text-lg font-semibold text-white">Ajuste Fino de Quantidades (Opcional)</h4>
+                                <p class="text-xs text-slate-400">Deixe em branco ou 0 para usar o cálculo automático.</p>
+                                
+                                <div class="flex items-center space-x-2">
+                                    <label for="calc-qty-acabamento-manual" class="block text-sm font-semibold text-slate-300 w-2/5">Qtd. Acabamento (barras)</label>
+                                    <input type="number" id="calc-qty-acabamento-manual" placeholder="Auto" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                                </div>
+                                
+                                <div class="flex items-center space-x-2">
+                                    <label for="calc-qty-estrutura-manual" class="block text-sm font-semibold text-slate-300 w-2/S5">Qtd. Estrutura (barras)</label>
+                                    <input type="number" id="calc-qty-estrutura-manual" placeholder="Auto" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                                </div>
+
+                                <div class="flex items-center space-x-2">
+                                    <label for="calc-qty-parafusos-manual" class="block text-sm font-semibold text-slate-300 w-2/5">Qtd. Parafusos (unid.)</label>
+                                    <input type="number" id="calc-qty-parafusos-manual" placeholder="Auto" class="manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between space-x-2 pt-2">
+                                <button id="step-4-prev" class="text-sm bg-slate-600 text-white font-medium px-5 py-2 rounded-md hover:bg-slate-500 transition-colors">
+                                    &larr; Voltar
+                                </button>
+                                <button id="calc-button" class="text-lg bg-amber-500 text-gray-900 font-bold px-6 py-2 rounded-md hover:bg-amber-400 transition-colors">
+                                    Confirmar / Finalizar Cálculo
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div id="calc-results-wrapper" class="hidden bg-slate-800 p-5 rounded-lg border border-slate-700 shadow-lg lg:col-span-2 space-y-4">
+                        
+                        <div class="mb-4 border-b pb-4 border-slate-700">
+                            <h3 class="text-xl font-bold text-white">Casa do Forro</h3>
+                            <p class="text-sm text-slate-400">Rua Alfredo Dalmina, 127</p>
+                            <p class="text-sm text-slate-400">Bairro São Cristóvão, Cascavel - PR</p>
+                            <p class="text-sm font-semibold text-slate-300">Telefone: (45) 99902-4040</p>
+                        </div>
+                        
+                        <div id="calc-client-display" class="hidden py-4 border-b border-slate-700">
+                            <h4 class="text-md font-bold text-slate-300 mb-2">Para:</h4>
+                            <p id="calc-client-display-name" class="text-sm font-semibold text-slate-300"></p>
+                            <p id="calc-client-display-address" class="text-sm text-slate-400"></p>
+                            <p id="calc-client-display-phone" class="text-sm text-slate-400"></p>
+                            <p id="calc-client-display-cpf" class="text-sm text-slate-400"></p>
+                        </div>
+                        
+                        <div class="py-4 space-y-3 divide-y divide-slate-700">
+                            <h3 class="text-lg font-bold text-cyan-400 -mb-2">Resumo de Quantidades</h3>
+                            
+                            <div id="calc-output-modelo-wrapper" class="flex justify-between items-center hidden pt-3">
+                                <span class="font-medium text-slate-400">Modelo do Forro:</span>
+                                <span id="calc-output-modelo" class="font-bold text-md text-white"></span>
+                            </div>
+                            <div id="calc-output-acabamento-tipo-wrapper" class="flex justify-between items-center hidden pt-3">
+                                <span class="font-medium text-slate-400">Acabamento:</span>
+                                <span id="calc-output-acabamento-tipo" class="font-bold text-md text-white"></span>
+                            </div>
+                            
+                            <div id="calc-output-comodos-wrapper" class="flex justify-between items-center pt-3">
+                                <span class="font-medium text-slate-400">Total de Cômodos:</span>
+                                <span id="calc-output-comodos" class="font-bold text-md text-white">0</span>
+                            </div>
+                            <div id="calc-output-area-wrapper" class="flex justify-between items-center pt-3">
+                                <span class="font-medium text-slate-400">Área Total (Forro):</span>
+                                <span id="calc-output-area" class="font-bold text-md text-white">0 m²</span>
+                            </div>
+                            <div id="calc-output-perimetro-wrapper" class="flex justify-between items-center pt-3">
+                                <span class="font-medium text-slate-400">Perímetro Total (Acabamento):</span>
+                                <span id="calc-output-perimetro" class="font-bold text-md text-white">0 m</span>
+                            </div>
+                            <div id="calc-output-moldura-wrapper" class="flex justify-between items-center pt-3">
+                                <span class="font-medium text-slate-400">Acabamento (Meia Cana / Perfil U):</span>
+                                <span id="calc-output-moldura" class="font-bold text-md text-white">0 barras (6m)</span>
+                            </div>
+                            <div id="calc-output-cantos-internos-wrapper" class="flex justify-between items-center hidden pt-3">
+                                <span class="font-medium text-slate-400">Cantos Internos:</span>
+                                <span id="calc-output-cantos-internos" class="font-bold text-md text-white">0 unidades</span>
+                            </div>
+                            <div id="calc-output-perfil-z-wrapper" class="flex justify-between items-center pt-3">
+                                <span class="font-medium text-slate-400">Estrutura (Perfil Z):</span>
+                                <span id="calc-output-perfil-z" class="font-bold text-md text-white">0 barras (3m)</span>
+                            </div>
+                            <div id="calc-output-parafusos-wrapper" class="flex justify-between items-center pt-3">
+                                <span class="font-medium text-slate-400">Parafusos (Ponta Agulha):</span>
+                                <span id="calc-output-parafusos" class="font-bold text-md text-white">0 unidades</span>
+                            </div>
+                        </div>
+
+                        <div class="py-4 space-y-2">
+                            <h3 class="text-lg font-bold text-cyan-400 mb-2">Detalhamento de Custo</h3>
+                            
+                            <div id="calc-cost-forro-wrapper" class="text-sm p-2 bg-slate-700 rounded border border-slate-600 hidden">
+                                <div class="flex justify-between items-center font-medium">
+                                    <span>Forro (Material)</span>
+                                    <span id="calc-cost-forro" class="font-semibold text-white">R$ 0,00</span>
+                                </div>
+                                <div class="flex justify-between items-center text-xs text-slate-400 mt-1">
+                                    <span>
+                                        Qtd: <span id="calc-qty-forro" class="font-medium text-slate-300">0 m²</span>
+                                    </span>
+                                    <span>
+                                        Unit: <span id="calc-unit-forro" class="font-medium text-slate-300">R$ 0,00 / m²</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div id="calc-cost-acabamento-wrapper" class="text-sm p-2 bg-slate-700 rounded border border-slate-600 hidden">
+                                <div class="flex justify-between items-center font-medium">
+                                    <span>Acabamento (barras 6m)</span>
+                                    <span id="calc-cost-acabamento" class="font-semibold text-white">R$ 0,00</span>
+                                </div>
+                                <div class="flex justify-between items-center text-xs text-slate-400 mt-1">
+                                    <span>
+                                        Qtd: <span id="calc-qty-acabamento" class="font-medium text-slate-300">0 barras</span>
+                                    </span>
+                                    <span>
+                                        Unit: <span id="calc-unit-acabamento" class="font-medium text-slate-300">R$ 0,00 / barra</span>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div id="calc-cost-cantos-internos-wrapper" class="text-sm p-2 bg-slate-700 rounded border border-slate-600 hidden">
+                                <div class="flex justify-between items-center font-medium">
+                                    <span>Cantos Internos (unid.)</span>
+                                    <span id="calc-cost-cantos-internos" class="font-semibold text-white">R$ 0,00</span>
+                                </div>
+                                <div class="flex justify-between items-center text-xs text-slate-400 mt-1">
+                                    <span>
+                                        Qtd: <span id="calc-qty-cantos-internos" class="font-medium text-slate-300">0 unid.</span>
+                                    </span>
+                                    <span>
+                                        Unit: <span id="calc-unit-cantos-internos" class="font-medium text-slate-300">R$ 0,00 / unid.</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div id="calc-cost-estrutura-wrapper" class="text-sm p-2 bg-slate-700 rounded border border-slate-600 hidden">
+                                <div class="flex justify-between items-center font-medium">
+                                    <span>Estrutura (barras 3m)</span>
+                                    <span id="calc-cost-estrutura" class="font-semibold text-white">R$ 0,00</span>
+                                </div>
+                                <div class="flex justify-between items-center text-xs text-slate-400 mt-1">
+                                    <span>
+                                        Qtd: <span id="calc-qty-estrutura" class="font-medium text-slate-300">0 barras</span>
+                                    </span>
+                                    <span>
+                                        Unit: <span id="calc-unit-estrutura" class="font-medium text-slate-300">R$ 0,00 / barra</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div id="calc-cost-parafusos-wrapper" class="text-sm p-2 bg-slate-700 rounded border border-slate-600 hidden">
+                                <div class="flex justify-between items-center font-medium">
+                                    <span>Parafusos (unid.)</span>
+                                    <span id="calc-cost-parafusos" class="font-semibold text-white">R$ 0,00</span>
+                                </div>
+                                <div class="flex justify-between items-center text-xs text-slate-400 mt-1">
+                                    <span>
+                                        Qtd: <span id="calc-qty-parafusos" class="font-medium text-slate-300">0 unid.</span>
+                                    </span>
+                                    <span>
+                                        Unit: <span id="calc-unit-parafusos" class="font-medium text-slate-300">R$ 0,00 / unid.</span>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div id="calc-cost-mao-de-obra-wrapper" class="text-sm p-2 bg-slate-700 rounded border border-slate-600 hidden">
+                                <div class="flex justify-between items-center font-medium">
+                                    <span>Mão de Obra</span>
+                                    <span id="calc-cost-mao-de-obra" class="font-semibold text-white">R$ 0,00</span>
+                                </div>
+                                <div class="flex justify-between items-center text-xs text-slate-400 mt-1">
+                                    <span>
+                                        Qtd: <span id="calc-qty-mao-de-obra" class="font-medium text-slate-300">0 m²</span>
+                                    </span>
+                                    <span>
+                                        Unit: <span id="calc-unit-mao-de-obra" class="font-medium text-slate-300">R$ 0,00 / m²</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div id="calc-cost-frete-wrapper" class="text-sm p-2 bg-slate-700 rounded border border-slate-600 hidden">
+                                <div class="flex justify-between items-center font-medium">
+                                    <span>Frete</span>
+                                    <span id="calc-cost-frete" class="font-semibold text-white">R$ 0,00</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-4">
+                            <div class="flex justify-between items-center bg-slate-900 p-4 rounded-lg shadow-inner">
+                                <span class="font-bold text-slate-300 text-xl">CUSTO TOTAL:</span>
+                                <span id="calc-cost-total" class="font-bold text-2xl text-cyan-400">R$ 0,00</span>
+                            </div>
+                        </div>
+
+                        <div class="py-4 border-t border-slate-700">
+                            <span class="font-medium text-slate-300">Detalhes das Lâminas (Forro PVC):</span>
+                            <div id="calc-output-laminas-detalhe" class="mt-2 space-y-1 text-sm text-slate-300 bg-slate-700 p-3 rounded-md border border-slate-600">
+                                <p class="text-slate-500 text-xs">Preencha os cômodos para ver os detalhes.</p>
+                            </div>
+                        </div>
+                        
+                        <div id="calc-output-obs-wrapper" class="hidden pt-4 border-t border-slate-700">
+                            <span class="font-medium text-slate-300">Observações:</span>
+                            <p id="calc-output-obs" class="text-sm text-slate-200 whitespace-pre-wrap bg-slate-700 p-3 rounded-md mt-2"></p>
+                        </div>
+                        
+                        <p id="calc-error" class="text-red-400 bg-red-900 border border-red-700 p-3 rounded-md font-medium mt-4 hidden">Por favor, preencha todos os campos com valores válidos.</p>
+                        
+                        <div id="calc-atencao" class="text-xs text-slate-400 mt-4 p-3 bg-slate-700 rounded-lg border border-slate-600 flex items-start space-x-2">
+                            <svg class="w-5 h-5 text-slate-400 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 9h.01M12 21a9 9 0 110-18 9 9 0 010 18z" />
+                            </svg>
+                            <p><strong>Atenção:</strong> Esta é uma estimativa. Sempre adicione uma porcentagem de perda (5-10%) e confirme as medidas no local. O cálculo da estrutura é uma estimativa baseada na área total (1.2 barras/m²).</p>
+                        </div>
+                    
+                        <div id="print-button-container" class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <button id="copy-to-whatsapp" class="w-full text-lg bg-green-600 text-white font-bold px-4 py-2 rounded-md hover:bg-green-500 transition-colors shadow-lg">
+                                Compartilhar 📤
+                            </button>
+                            <button id="print-button" class="w-full text-lg bg-cyan-700 text-white font-bold px-4 py-2 rounded-md hover:bg-cyan-600 transition-colors shadow-lg">
+                                Imprimir 🖨️
+                            </button>
+                            <button id="pdf-button" class="w-full text-lg bg-red-700 text-white font-bold px-4 py-2 rounded-md hover:bg-red-600 transition-colors shadow-lg">
+                                PDF 📄
+                            </button>
+                        </div>
+                    </div>
+                    
+                </div>
+            </section>
+
+        </main>
+
+        <div id="copy-feedback" class="hidden fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-xl transition-opacity duration-300">
+            Texto copiado!
+        </div>
+
+    </div>
+
+    <script type="module">
+        // ********** REMOVIDO: Importa o SDK do Gemini **********
+        // import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+        // Verifica se o APP_CONFIG foi carregado do config.js
+        if (typeof APP_CONFIG === 'undefined') {
+            alert("ERRO CRÍTICO: O arquivo config.js não foi carregado. A calculadora não pode funcionar.");
+            // Desabilita a aplicação
+            document.getElementById('app-container').innerHTML = '<h1 class="text-red-500 text-2xl p-8">Erro ao carregar config.js</h1>';
+            throw new Error("config.js não encontrado");
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- INÍCIO: Configurações de Preços Padrão (AGORA VEM DO CONFIG.JS) ---
+            // Acessa os preços do objeto APP_CONFIG
+            const STANDARD_PRICES = APP_CONFIG.standardPrices;
+            // --- FIM: Configurações de Preços Padrão ---
+
+            
+            // --- INÍCIO: Configurações de Estoque de Lâminas (AGORA VEM DO CONFIG.JS) ---
+            /**
+             * Retorna a lista de comprimentos de estoque para um modelo de forro.
+             * @param {string} modelValue - O 'value' do <select> de modelo.
+             * @returns {number[]} - Array de comprimentos (ex: [4, 5, 6, 7])
+             */
+            function getAvailableStock(modelValue) {
+                // APP_CONFIG.stock é o mapa de estoque vindo do config.js
+                const stock = APP_CONFIG.stock[modelValue];
+                if (stock) {
+                    return stock.sort((a, b) => a - b);
+                }
+                // Se não encontrar, retorna o padrão (Assumido 6m)
+                return APP_CONFIG.stock["DEFAULT"] || [6];
+            }
+
+            /**
+             * Encontra a menor peça de estoque que serve para o comprimento necessário.
+             * @param {number} requiredLength - Comprimento necessário (ex: 4.8)
+             * @param {number[]} availableStock - Array de estoque (ex: [4, 5, 6])
+             * @returns {number|null} - O melhor comprimento (ex: 5) ou null se não houver
+             */
+            function calculateBestFit(requiredLength, availableStock) {
+                // Garante que o estoque está classificado
+                const sortedStock = [...availableStock].sort((a, b) => a - b);
+                
+                const bestFit = sortedStock.find(stockLength => stockLength >= requiredLength);
+                
+                return bestFit || null; // Retorna null se nenhum item do estoque for grande o suficiente
+            }
+            // --- FIM: Configurações de Estoque de Lâminas ---
+
+
+            // --- INÍCIO: Seleção de Elementos (Calculadora) ---
+            const { jsPDF } = window.jspdf; 
+            const calcButton = document.getElementById('calc-button');
+            const addComodoBtn = document.getElementById('add-comodo-btn');
+            const comodosContainer = document.getElementById('comodos-container');
+            const shareButton = document.getElementById('copy-to-whatsapp');
+            const printButton = document.getElementById('print-button');
+            const pdfButton = document.getElementById('pdf-button');
+            const resultsWrapperForPrint = document.getElementById('calc-results-wrapper'); 
+            
+            const modeloForroSelect = document.getElementById('calc-modelo-forro');
+            const tipoAcabamentoSelect = document.getElementById('calc-tipo-acabamento');
+            
+            // Elementos de Preço Unitário e Controles
+            const priceForroInput = document.getElementById('calc-price-forro-m2');
+            const overrideForroM2 = document.getElementById('override-forro-m2'); 
+            const priceAcabamentoInput = document.getElementById('calc-price-acabamento');
+            const overrideAcabamento = document.getElementById('override-acabamento');
+            const priceCantosInternosInput = document.getElementById('calc-price-cantos-internos');
+            const overrideCantosInternos = document.getElementById('override-cantos-internos');
+            const priceCantosInternosWrapper = document.getElementById('price-cantos-internos-wrapper');
+            const priceEstruturaInput = document.getElementById('calc-price-estrutura');
+            const overrideEstrutura = document.getElementById('override-estrutura');
+            const includeEstrutura = document.getElementById('include-estrutura'); 
+            const priceParafusoInput = document.getElementById('calc-price-parafuso');
+            const overrideParafuso = document.getElementById('override-parafuso');
+            const includeParafuso = document.getElementById('include-parafuso'); 
+            const priceMaoDeObraInput = document.getElementById('calc-price-mao-de-obra');
+            const overrideMaoDeObra = document.getElementById('override-mao-de-obra');
+            const includeMaoDeObra = document.getElementById('include-mao-de-obra');
+            const priceFreteInput = document.getElementById('calc-price-frete');
+            const overrideFrete = document.getElementById('override-frete');
+            const includeFrete = document.getElementById('include-frete');
+
+            let comodoCount = 1;
+
+            // Elementos de Passo (AGORA 4 PASSOS)
+            const step1 = document.getElementById('calc-step-1');
+            const step2 = document.getElementById('calc-step-2');
+            const step3 = document.getElementById('calc-step-3');
+            const step4 = document.getElementById('calc-step-4'); // NOVO
+            const allSteps = [step1, step2, step3, step4];
+
+            // Botões de Navegação (Passo)
+            const step1NextBtn = document.getElementById('step-1-next');
+            const step2NextBtn = document.getElementById('step-2-next');
+            const step2PrevBtn = document.getElementById('step-2-prev');
+            const step3NextBtn = document.getElementById('step-3-next'); // NOVO
+            const step3PrevBtn = document.getElementById('step-3-prev'); // NOVO
+            const step4PrevBtn = document.getElementById('step-4-prev'); // NOVO (Antigo step-3-prev)
+            
+            // Elementos do Stepper (AGORA 4 PASSOS)
+            const stepperNav = document.getElementById('stepper');
+            const stepper1Btn = document.getElementById('stepper-1');
+            const stepper2Btn = document.getElementById('stepper-2');
+            const stepper3Btn = document.getElementById('stepper-3');
+            const stepper4Btn = document.getElementById('stepper-4'); // NOVO
+            const allStepperBtns = [stepper1Btn, stepper2Btn, stepper3Btn, stepper4Btn];
+
+            // Elementos de Tipo de Medição (Passo 3)
+            const measurementTypeRooms = document.getElementById('measurement-type-rooms');
+            const measurementTypeManual = document.getElementById('measurement-type-manual');
+            const measurementRoomsContent = document.getElementById('measurement-rooms-content');
+            const measurementManualContent = document.getElementById('measurement-manual-content');
+
+            let currentStep = 1;
+            // --- FIM: Seleção de Elementos (Calculadora) ---
+
+
+            // --- NOVO: Preenche o menu de seleção de Forros ---
+            function populateForroSelect() {
+                if (!APP_CONFIG.models || APP_CONFIG.models.length === 0) {
+                    console.error("Nenhum modelo de forro encontrado em config.js");
+                    return;
+                }
+
+                // Limpa opções existentes (exceto a primeira "Selecione um modelo")
+                while (modeloForroSelect.options.length > 1) {
+                    modeloForroSelect.remove(1);
+                }
+
+                APP_CONFIG.models.forEach(group => {
+                    const optgroup = document.createElement('optgroup');
+                    optgroup.label = group.group;
+                    
+                    group.items.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.value;
+                        option.innerText = item.value; // O texto da opção é o próprio valor
+                        option.dataset.price = item.price;
+                        option.dataset.category = item.category;
+                        optgroup.appendChild(option);
+                    });
+                    
+                    modeloForroSelect.appendChild(optgroup);
+                });
+            }
+            // Roda a função para preencher o menu
+            populateForroSelect();
+            // --- FIM: Preenchimento do menu ---
+
+
+            // Inicializa a UI
+            showStep(1);
+            
+            // --- Funções de Feedback e Utilidade ---
+            function formatCurrency(value) {
+                if (isNaN(value)) {
+                    value = 0;
+                }
+                return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            }
+            
+            function getAcabamentoPrice(type, category) {
+                if (type === 'Sem Acabamentos') return 0;
+                const isWhite = category === 'Branco';
+                if (type === 'Perfil U') {
+                    return isWhite ? STANDARD_PRICES.ACABAMENTO_PERFIL_U_BRANCO : STANDARD_PRICES.ACABAMENTO_PERFIL_U_COLORIDO;
+                } else { // Meia Cana
+                    return isWhite ? STANDARD_PRICES.ACABAMENTO_MEIA_CANA_BRANCO : STANDARD_PRICES.ACABAMENTO_MEIA_CANA_COLORIDO;
+                }
+            }
+            
+            function updateUnitPrices() {
+                const selectedOption = modeloForroSelect.options[modeloForroSelect.selectedIndex];
+                const colorCategory = selectedOption.getAttribute('data-category') || 'Branco';
+                const acabamentoType = tipoAcabamentoSelect.value;
+                const isMeiaCana = acabamentoType === 'Meia Cana';
+                
+                priceCantosInternosWrapper.classList.toggle('hidden', !isMeiaCana);
+
+                // 1. Preço do Forro
+                if (!overrideForroM2.checked) {
+                    const forroPrice = parseFloat(selectedOption.getAttribute('data-price')) || 0;
+                    priceForroInput.value = forroPrice.toFixed(2);
+                    priceForroInput.readOnly = true;
+                } else {
+                    priceForroInput.readOnly = false;
+                }
+                
+                // 2. Acabamento
+                if (!overrideAcabamento.checked) {
+                    const price = getAcabamentoPrice(acabamentoType, colorCategory);
+                    priceAcabamentoInput.value = price.toFixed(2);
+                    priceAcabamentoInput.readOnly = true;
+                } else {
+                    priceAcabamentoInput.readOnly = false;
+                }
+                
+                // 3. Cantos Internos (Vem do STANDARD_PRICES no config.js)
+                if (isMeiaCana) {
+                    if (!overrideCantosInternos.checked) {
+                        priceCantosInternosInput.value = STANDARD_PRICES.CANTO_INTERNO_UNIDADE.toFixed(2);
+                        priceCantosInternosInput.readOnly = true;
+                    } else {
+                        priceCantosInternosInput.readOnly = false;
+                    }
+                }
+                
+                // 4. Estrutura (Vem do STANDARD_PRICES no config.js)
+                if (!overrideEstrutura.checked) {
+                    priceEstruturaInput.value = STANDARD_PRICES.ESTRUTURA_BARRA_3M.toFixed(2);
+                    priceEstruturaInput.readOnly = true;
+                } else {
+                    priceEstruturaInput.readOnly = false;
+                }
+
+                // 5. Parafuso (Vem do STANDARD_PRICES no config.js)
+                if (!overrideParafuso.checked) {
+                    priceParafusoInput.value = STANDARD_PRICES.PARAFUSO_UNIDADE.toFixed(2);
+                    priceParafusoInput.readOnly = true;
+                } else {
+                    priceParafusoInput.readOnly = false;
+                }
+
+                // 6. Mão de Obra (Vem do STANDARD_PRICES no config.js)
+                if (!overrideMaoDeObra.checked) {
+                    priceMaoDeObraInput.value = STANDARD_PRICES.MAO_DE_OBRA_M2.toFixed(2);
+                    priceMaoDeObraInput.readOnly = true;
+                } else {
+                    priceMaoDeObraInput.readOnly = false;
+                }
+
+                // 7. Frete (Vem do STANDARD_PRICES no config.js)
+                if (!overrideFrete.checked) {
+                    priceFreteInput.value = STANDARD_PRICES.FRETE_TOTAL.toFixed(2);
+                    priceFreteInput.readOnly = true;
+                } else {
+                    priceFreteInput.readOnly = false;
+                }
+                
+                // Atualiza cores de fundo dos inputs manuais
+                document.querySelectorAll('.manual-price-input').forEach(input => {
+                    input.classList.toggle('bg-slate-800', input.readOnly);
+                    input.classList.toggle('border-slate-700', input.readOnly);
+                    input.classList.toggle('bg-slate-700', !input.readOnly);
+                    input.classList.toggle('border-slate-600', !input.readOnly);
+                });
+
+                // Inputs normais
+                document.querySelectorAll('input:not([readonly]):not(.manual-price-input), select, textarea').forEach(input => {
+                    input.classList.add('input-dark');
+                });
+            }
+
+            // Inicializa preços ao carregar a página
+            updateUnitPrices();
+
+            // --- Lógica de Arredondamento (Mantida) ---
+            if (comodosContainer) {
+                comodosContainer.addEventListener('change', (e) => {
+                    const input = e.target;
+                    
+                    if (input.classList.contains('comodo-largura')) {
+                        let val = parseFloat(input.value);
+                        if (!isNaN(val) && val > 0) {
+                            const rounded = Math.round(val / 0.20) * 0.20;
+                            input.value = rounded.toFixed(2); 
+                        } else if (input.value.trim() !== "") {
+                            input.value = ''; 
+                        }
+                    }
+                    
+                    if (input.classList.contains('comodo-comprimento')) {
+                        let val = parseFloat(input.value);
+                        if (!isNaN(val) && val > 0) {
+                            const rounded = Math.round(val / 0.5) * 0.5;
+                            input.value = rounded.toFixed(2); 
+                        } else if (input.value.trim() !== "") {
+                            input.value = ''; 
+                        }
+                    }
+                });
+            }
+
+            // --- Lógica de Ligação (Modelo do Forro/Acabamento) ---
+            if (modeloForroSelect) {
+                modeloForroSelect.addEventListener('change', updateUnitPrices);
+            }
+            if (tipoAcabamentoSelect) {
+                tipoAcabamentoSelect.addEventListener('change', updateUnitPrices);
+            }
+            
+            // --- Lógica de Override Manual ---
+            document.querySelectorAll('.override-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    let id = e.target.id.replace('override-', 'calc-price-');
+                    if (e.target.id === 'override-forro-m2') {
+                        id = 'calc-price-forro-m2';
+                    }
+                    
+                    const input = document.getElementById(id);
+                    
+                    if (input) {
+                        if (e.target.checked) {
+                            input.readOnly = false;
+                            input.classList.remove('bg-slate-800', 'border-slate-700');
+                            input.classList.add('bg-slate-700', 'border-slate-600');
+                        } else {
+                            updateUnitPrices();
+                        }
+                    }
+                });
+            });
+
+
+            // --- LÓGICA DE NAVEGAÇÃO DOS PASSOS (ATUALIZADA V3) ---
+            
+            /**
+             * Atualiza a UI para mostrar um passo específico e o estado do stepper.
+             * @param {number} stepNumber - O passo para mostrar (1, 2, 3 ou 4).
+             */
+            function showStep(stepNumber) {
+                // Rastreia o passo mais alto alcançado
+                let completedStep = parseInt(stepperNav.dataset.completedStep || '0');
+                stepperNav.dataset.completedStep = Math.max(completedStep, stepNumber - 1).toString();
+                
+                currentStep = stepNumber;
+
+                // 1. Esconde/Mostra os blocos de conteúdo
+                allSteps.forEach((step, index) => {
+                    step.classList.toggle('hidden', index + 1 !== stepNumber);
+                });
+                
+                // 2. Atualiza a UI do Stepper
+                completedStep = parseInt(stepperNav.dataset.completedStep || '0');
+                
+                allStepperBtns.forEach((btn, index) => {
+                    const step = index + 1;
+                    btn.classList.remove('active', 'completed');
+                    
+                    if (step === stepNumber) {
+                        // Passo Ativo
+                        btn.classList.add('active');
+                    } else if (step <= completedStep) {
+                        // Passo Concluído (mas não ativo)
+                        btn.classList.add('completed');
+                    }
+                });
+                
+                // 3. Ocultar resultados ao navegar para longe do último passo
+                if (stepNumber !== 4) {
+                    resultsWrapperForPrint.classList.add('hidden');
+                }
+            }
+
+            // Ações de Navegação dos Botões
+            if (step1NextBtn) {
+                step1NextBtn.addEventListener('click', () => showStep(2));
+            }
+            if (step2PrevBtn) {
+                step2PrevBtn.addEventListener('click', () => showStep(1));
+            }
+            if (step2NextBtn) {
+                step2NextBtn.addEventListener('click', () => showStep(3));
+            }
+            if (step3PrevBtn) {
+                step3PrevBtn.addEventListener('click', () => showStep(2));
+            }
+            if (step3NextBtn) {
+                step3NextBtn.addEventListener('click', () => {
+                    updateUnitPrices(); // Garante que os preços estejam atualizados
+                    showStep(4);
+                });
+            }
+            if (step4PrevBtn) {
+                step4PrevBtn.addEventListener('click', () => showStep(3));
+            }
+
+
+            // Ações de Navegação do Stepper (NOVO V3)
+            allStepperBtns.forEach((btn, index) => {
+                btn.addEventListener('click', () => {
+                    const targetStep = index + 1;
+                    const completedStep = parseInt(stepperNav.dataset.completedStep || '0');
+                    
+                    // Só permite pular se o passo já foi visitado (ou é o próximo)
+                    if (targetStep <= completedStep + 1) {
+                        if (targetStep === 4) {
+                            updateUnitPrices(); // Atualiza preços antes de ir para o passo 4
+                        }
+                        showStep(targetStep);
+                    }
+                });
+            });
+
+            // Ações de Navegação do Tipo de Medição (Passo 3)
+            if (measurementTypeRooms) {
+                measurementTypeRooms.addEventListener('change', () => {
+                    if (measurementTypeRooms.checked) {
+                        measurementRoomsContent.classList.remove('hidden');
+                        measurementManualContent.classList.add('hidden');
+                    }
+                });
+            }
+            if (measurementTypeManual) {
+                measurementTypeManual.addEventListener('change', () => {
+                    if (measurementTypeManual.checked) {
+                        measurementRoomsContent.classList.add('hidden');
+                        measurementManualContent.classList.remove('hidden');
+                    }
+                });
+            }
+
+
+            // --- Lógica de Adicionar Cômodo (MODIFICADA) ---
+            function createComodoHTML(comodoNumber) {
+                // CAMPOS INVERTIDOS AQUI NO TEMPLATE JS
+                return `
+                    <div class="comodo-item border border-slate-600 p-4 rounded-lg space-y-3 bg-slate-700 relative">
+                        <button class="remove-comodo-btn absolute top-2 right-2 text-red-500 hover:text-red-400 font-bold text-lg">&times;</button>
+                        <h4 class="font-semibold text-white">Cômodo ${comodoNumber}</h4>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-300">Comprimento (metros)</label>
+                            <input type="number" placeholder="Ex: 5 (Arredonda para 0.50)" class="comodo-comprimento manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-300">Largura (metros)</label>
+                            <input type="number" placeholder="Ex: 3.5 (Arredonda para 0.20)" class="comodo-largura manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-300">Sentido da Instalação</label>
+                            <select class="comodo-sentido manual-price-input mt-1 block w-full px-3 py-2 border rounded-md shadow-sm text-sm focus:outline-none bg-slate-700 border-slate-600">
+                                <option value="comprimento">Ao longo do COMPRIMENTO</option>
+                                <option value="largura">Ao longo da LARGURA</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            function updateComodoNumbers() {
+                const comodoItens = comodosContainer.querySelectorAll('.comodo-item');
+                comodoCount = comodoItens.length; // Reset count
+                comodoItens.forEach((item, index) => {
+                    item.querySelector('h4').innerText = `Cômodo ${index + 1}`;
+                });
+            }
+
+            if (addComodoBtn) {
+                addComodoBtn.addEventListener('click', () => {
+                    comodoCount++;
+                    const newComodo = document.createElement('div');
+                    newComodo.innerHTML = createComodoHTML(comodoCount);
+                    const comodoElement = newComodo.firstElementChild;
+
+                    comodoElement.querySelector('.remove-comodo-btn').addEventListener('click', (e) => {
+                        e.target.closest('.comodo-item').remove();
+                        updateComodoNumbers();
+                    });
+
+                    comodosContainer.appendChild(comodoElement);
+                });
+            }
+            
+            comodosContainer.addEventListener('click', (e) => {
+                if (e.target.classList.contains('remove-comodo-btn') && comodosContainer.querySelectorAll('.comodo-item').length > 1) {
+                    e.target.closest('.comodo-item').remove();
+                    updateComodoNumbers();
+                } else if (e.target.classList.contains('remove-comodo-btn') && comodosContainer.querySelectorAll('.comodo-item').length === 1) {
+                    const comodo = e.target.closest('.comodo-item');
+                    comodo.querySelector('.comodo-largura').value = '';
+                    comodo.querySelector('.comodo-comprimento').value = '';
+                    e.stopPropagation(); 
+                }
+            });
+
+            // --- Lógica Principal da Calculadora (MODIFICADA) ---
+            if (calcButton) {
+                calcButton.addEventListener('click', () => {
+                    
+                    // SÓ EXECUTA O CÁLCULO SE ESTIVER NO PASSO 4
+                    if (currentStep !== 4) {
+                        // Se não estiver no passo 4, força a ida para o passo 4
+                        updateUnitPrices();
+                        showStep(4);
+                        return;
+                    }
+
+                    const larguraLamina = parseFloat(document.getElementById('calc-largura-lamina').value);
+                    const tipoAcabamento = document.getElementById('calc-tipo-acabamento').value;
+                    const modeloForroSelecionado = document.getElementById('calc-modelo-forro').value;
+                    
+                    const isMeiaCana = tipoAcabamento === 'Meia Cana';
+                    const isSemAcabamento = tipoAcabamento === 'Sem Acabamentos';
+
+                    const includePerfilZQuantity = document.getElementById('check-perfil-z')?.checked || false;
+                    const includeParafusosQuantity = document.getElementById('check-parafusos')?.checked || false;
+                    
+                    const isEstruturaIncluded = document.getElementById('include-estrutura').checked; 
+                    const isParafusoIncluded = document.getElementById('include-parafuso').checked; 
+                    const isMaoDeObraIncluded = document.getElementById('include-mao-de-obra').checked;
+                    const isFreteIncluded = document.getElementById('include-frete').checked;
+                    // LÊ A NOVA CHECKBOX
+                    const isCantosInternosIncluded = document.getElementById('include-cantos-internos').checked;
+
+                    const resultsWrapper = document.getElementById('calc-results-wrapper');
+                    const errorEl = document.getElementById('calc-error');
+
+                    // --- Ler Preços Unitários ---
+                    const priceForroM2 = parseFloat(priceForroInput.value) || 0;
+                    const priceAcabamento = parseFloat(priceAcabamentoInput.value) || 0;
+                    const priceCantosInternos = isMeiaCana ? (parseFloat(priceCantosInternosInput.value) || 0) : 0; 
+                    const priceEstrutura = parseFloat(priceEstruturaInput.value) || 0;
+                    const priceParafuso = parseFloat(priceParafusoInput.value) || 0;
+                    const priceMaoDeObra = parseFloat(priceMaoDeObraInput.value) || 0;
+                    const priceFrete = parseFloat(priceFreteInput.value) || 0;
+
+
+                    // --- Ler Dados do Cliente ---
+                    const clientName = document.getElementById('calc-client-name').value.trim();
+                    const clientAddress = document.getElementById('calc-client-address').value.trim();
+                    const clientPhone = document.getElementById('calc-client-phone').value.trim();
+                    const clientCpf = document.getElementById('calc-client-cpf').value.trim();
+                    const clientObs = document.getElementById('calc-client-obs').value.trim(); 
+
+                    // --- LÓGICA DE MEDIÇÃO ---
+                    let totalArea = 0;
+                    let totalPerimetro = 0;
+                    let numComodosValidos = 0;
+                    let laminasPorComodo = []; 
+                    let totalLaminasCount = 0; 
+                    let hasError = false;
+                    
+                    const isManualMeasurement = document.getElementById('measurement-type-manual').checked;
+
+                    if (isManualMeasurement) {
+                        totalArea = parseFloat(document.getElementById('calc-manual-area').value) || 0;
+                        totalPerimetro = parseFloat(document.getElementById('calc-manual-perimetro').value) || 0;
+                        
+                        if (totalArea <= 0) { 
+                            hasError = true;
+                        }
+                        numComodosValidos = totalArea > 0 ? 1 : 0; 
+                        laminasPorComodo = [];
+                        totalLaminasCount = 0;
+                        
+                    } else {
+                        const comodos = comodosContainer.querySelectorAll('.comodo-item');
+                        comodos.forEach((comodo, index) => {
+                            const larguraEl = comodo.querySelector('.comodo-largura');
+                            const comprimentoEl = comodo.querySelector('.comodo-comprimento');
+                            const sentidoEl = comodo.querySelector('.comodo-sentido'); // Objeto Element
+
+                            // Verificação de segurança (agora que as classes existem, isso não deve falhar)
+                            if (!larguraEl || !comprimentoEl || !sentidoEl) {
+                                console.error("Erro crítico: Classes não encontradas no comodo-item", comodo);
+                                hasError = true;
+                                return;
+                            }
+                            
+                            const largura = parseFloat(larguraEl.value); 
+                            const comprimento = parseFloat(comprimentoEl.value);
+                            const sentido = sentidoEl.value; // Pega o valor
+
+                            if ((larguraEl.value.trim() !== "" || comprimentoEl.value.trim() !== "") && (!largura || !comprimento || largura <= 0 || comprimento <= 0)) {
+                                hasError = true;
+                                return; 
+                            }
+                            if (!largura || !comprimento || largura <= 0 || comprimento <= 0) {
+                                return;
+                            }
+                            
+                            numComodosValidos++;
+
+                            totalArea += (largura * comprimento);
+                            totalPerimetro += (2 * (largura + comprimento));
+
+                            let numLaminasComodo;
+                            let slatLength;
+
+                            if (sentido === 'comprimento') {
+                                numLaminasComodo = Math.ceil(largura / larguraLamina);
+                                slatLength = comprimento;
+                            } else { 
+                                numLaminasComodo = Math.ceil(comprimento / larguraLamina);
+                                slatLength = largura;
+                            }
+                            
+                            const roundedSlatLength = parseFloat(slatLength.toFixed(2));
+
+                            laminasPorComodo.push({
+                                room: index + 1,
+                                quantity: numLaminasComodo,
+                                length: roundedSlatLength 
+                            });
+                            totalLaminasCount += numLaminasComodo;
+                        });
+                    }
+                    
+                    const totalCantosInternos = (isMeiaCana && !isManualMeasurement) ? (numComodosValidos * 4) : 0;
+
+                    // Validação final
+                    if (hasError || numComodosValidos === 0 || totalArea === 0 || priceForroM2 === 0) {
+                        resultsWrapper.classList.add('hidden');
+                        errorEl.innerText = "Por favor, preencha as medidas (Passo 3) E selecione um modelo de Forro (Passo 2) ou insira um Preço de Forro manual válido.";
+                        errorEl.classList.remove('hidden');
+                        setTimeout(() => { errorEl.classList.add('hidden'); }, 6000);
+                        return;
+                    }
+                    
+                    // --- LÓGICA DE QUANTIDADE MANUAL ---
+                    const manualQtyAcabamento = parseInt(document.getElementById('calc-qty-acabamento-manual').value, 10);
+                    const manualQtyEstrutura = parseInt(document.getElementById('calc-qty-estrutura-manual').value, 10);
+                    const manualQtyParafusos = parseInt(document.getElementById('calc-qty-parafusos-manual').value, 10);
+
+                    const numMolduras = !isNaN(manualQtyAcabamento) && manualQtyAcabamento >= 0 
+                        ? manualQtyAcabamento 
+                        : (isSemAcabamento ? 0 : Math.ceil(totalPerimetro / 6)); 
+                    
+                    const numPerfilZ = !isNaN(manualQtyEstrutura) && manualQtyEstrutura >= 0 
+                        ? manualQtyEstrutura 
+                        : (includePerfilZQuantity ? Math.ceil(totalArea * 1.2) : 0); 
+                    
+                    const numParafusos = !isNaN(manualQtyParafusos) && manualQtyParafusos >= 0 
+                        ? manualQtyParafusos 
+                        : (includeParafusosQuantity ? Math.ceil(totalArea * 20) : 0);
+                    
+                    // --- Calcular Custos Finais (MODIFICADO) ---
+                    const costForro = totalArea * priceForroM2;
+                    const costAcabamento = numMolduras * priceAcabamento; 
+                    // MODIFICADO: USA A NOVA CHECKBOX
+                    const costCantosInternos = isCantosInternosIncluded ? (totalCantosInternos * priceCantosInternos) : 0; 
+                    
+                    const costEstrutura = isEstruturaIncluded ? numPerfilZ * priceEstrutura : 0;
+                    const costParafusos = isParafusoIncluded ? numParafusos * priceParafuso : 0;
+                    const costMaoDeObra = isMaoDeObraIncluded ? totalArea * priceMaoDeObra : 0; 
+                    const costFrete = isFreteIncluded ? priceFrete : 0; 
+                    
+                    const costTotal = costForro + costAcabamento + costCantosInternos + costEstrutura + costParafusos + costMaoDeObra + costFrete; 
+                    
+                    // --- Atualiza a UI (Display de Quantidades) ---
+                    document.getElementById('calc-output-comodos').innerText = isManualMeasurement ? '1 (Total Manual)' : `${numComodosValidos}`;
+                    document.getElementById('calc-output-modelo').innerText = modeloForroSelecionado || 'Não Especificado';
+                    document.getElementById('calc-output-modelo-wrapper').classList.toggle('hidden', !modeloForroSelecionado);
+                    document.getElementById('calc-output-acabamento-tipo').innerText = tipoAcabamento;
+                    document.getElementById('calc-output-acabamento-tipo-wrapper').classList.remove('hidden');
+                    document.getElementById('calc-output-area').innerText = `${totalArea.toFixed(2)} m²`;
+                    document.getElementById('calc-output-perimetro').innerText = `${totalPerimetro.toFixed(2)} m`;
+                    document.getElementById('calc-output-moldura').innerText = `${numMolduras} barras (6m)`;
+                    document.getElementById('calc-output-cantos-internos').innerText = `${totalCantosInternos} unidades`;
+                    document.getElementById('calc-output-cantos-internos-wrapper').classList.toggle('hidden', !isMeiaCana || totalCantosInternos === 0 || isManualMeasurement);
+                    document.getElementById('calc-output-perfil-z').innerText = `${numPerfilZ} barras (3m)`;
+                    document.getElementById('calc-output-parafusos').innerText = `${numParafusos} unidades`;
+                    
+                    // --- Atualiza a UI (Custos Finais e Detalhes) (MODIFICADO) ---
+                    document.getElementById('calc-qty-forro').innerText = `${totalArea.toFixed(2)} m²`;
+                    document.getElementById('calc-unit-forro').innerText = `${formatCurrency(priceForroM2)} / m²`;
+                    document.getElementById('calc-cost-forro').innerText = formatCurrency(costForro);
+                    document.getElementById('calc-cost-forro-wrapper').classList.toggle('hidden', totalArea === 0 || priceForroM2 <= 0);
+                    document.getElementById('calc-qty-acabamento').innerText = `${numMolduras} barras`;
+                    document.getElementById('calc-unit-acabamento').innerText = `${formatCurrency(priceAcabamento)} / barra`;
+                    document.getElementById('calc-cost-acabamento').innerText = formatCurrency(costAcabamento);
+                    document.getElementById('calc-cost-acabamento-wrapper').classList.toggle('hidden', priceAcabamento <= 0 || isSemAcabamento);
+                    document.getElementById('calc-qty-cantos-internos').innerText = `${totalCantosInternos} unid.`;
+                    document.getElementById('calc-unit-cantos-internos').innerText = `${formatCurrency(priceCantosInternos)} / unid.`;
+                    document.getElementById('calc-cost-cantos-internos').innerText = formatCurrency(costCantosInternos);
+                    // MODIFICADO: USA A NOVA CHECKBOX NA LÓGICA DE EXIBIÇÃO
+                    document.getElementById('calc-cost-cantos-internos-wrapper').classList.toggle(
+                        'hidden', 
+                        !isCantosInternosIncluded || !isMeiaCana || totalCantosInternos === 0 || priceCantosInternos <= 0 || isManualMeasurement
+                    );
+                    document.getElementById('calc-qty-estrutura').innerText = `${numPerfilZ} barras`;
+                    document.getElementById('calc-unit-estrutura').innerText = `${formatCurrency(priceEstrutura)} / barra`;
+                    document.getElementById('calc-cost-estrutura').innerText = formatCurrency(costEstrutura);
+                    document.getElementById('calc-cost-estrutura-wrapper').classList.toggle('hidden', priceEstrutura <= 0 || !isEstruturaIncluded || numPerfilZ === 0);
+                    document.getElementById('calc-qty-parafusos').innerText = `${numParafusos} unid.`;
+                    document.getElementById('calc-unit-parafusos').innerText = `${formatCurrency(priceParafuso)} / unid.`;
+                    document.getElementById('calc-cost-parafusos').innerText = formatCurrency(costParafusos);
+                    document.getElementById('calc-cost-parafusos-wrapper').classList.toggle('hidden', priceParafuso <= 0 || !isParafusoIncluded || numParafusos === 0);
+                    document.getElementById('calc-qty-mao-de-obra').innerText = `${totalArea.toFixed(2)} m²`;
+                    document.getElementById('calc-unit-mao-de-obra').innerText = `${formatCurrency(priceMaoDeObra)} / m²`;
+                    document.getElementById('calc-cost-mao-de-obra').innerText = formatCurrency(costMaoDeObra); 
+                    document.getElementById('calc-cost-mao-de-obra-wrapper').classList.toggle('hidden', priceMaoDeObra <= 0 || !isMaoDeObraIncluded);
+                    document.getElementById('calc-cost-frete').innerText = formatCurrency(costFrete);
+                    document.getElementById('calc-cost-frete-wrapper').classList.toggle('hidden', priceFrete <= 0 || !isFreteIncluded);
+                    document.getElementById('calc-cost-total').innerText = formatCurrency(costTotal);
+
+                    
+                    // --- Popula os detalhes das lâminas (LÓGICA ATUALIZADA) ---
+                    const laminasDetalheContainer = document.getElementById('calc-output-laminas-detalhe');
+                    laminasDetalheContainer.innerHTML = ''; 
+
+                    if (!isManualMeasurement && laminasPorComodo.length > 0) {
+                        
+                        // --- NOVA LÓGICA DE CÁLCULO DE ESTOQUE ---
+                        const availableStock = getAvailableStock(modeloForroSelecionado);
+                        const finalLaminas = new Map(); // Mapa para agrupar por TAMANHO DE ESTOQUE
+                        const errorLaminas = []; // Array para peças que não têm estoque
+                        
+                        laminasPorComodo.forEach(item => {
+                            const requiredLength = item.length;
+                            const quantity = item.quantity;
+                            
+                            // Encontra a melhor peça de estoque
+                            const bestFitStock = calculateBestFit(requiredLength, availableStock);
+                            
+                            if (bestFitStock) {
+                                // Achou uma peça no estoque
+                                const key = `${bestFitStock}m`;
+                                const currentQty = finalLaminas.get(key) || 0;
+                                finalLaminas.set(key, currentQty + quantity);
+                            } else {
+                                // Nenhuma peça do estoque é grande o suficiente
+                                errorLaminas.push({ 
+                                    required: requiredLength.toFixed(2), 
+                                    quantity: quantity 
+                                });
+                            }
+                        });
+
+                        // --- EXIBIÇÃO DA NOVA LÓGICA ---
+                        
+                        // 1. Exibe as peças com estoque
+                        const sortedStockLaminas = [...finalLaminas.entries()].sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
+                        
+                        sortedStockLaminas.forEach(([stockKey, quantity]) => {
+                            const p = document.createElement('p');
+                            p.innerHTML = `<span class="mr-2">&bull;</span> <strong>${quantity}</strong> peças de <strong>${stockKey}</strong> (Estoque)`;
+                            laminasDetalheContainer.appendChild(p);
+                        });
+
+                        // 2. Exibe as peças sem estoque (ERRO)
+                        if (errorLaminas.length > 0) {
+                            const pErrorTitle = document.createElement('p');
+                            pErrorTitle.className = 'text-red-400 font-bold mt-2 pt-2 border-t border-slate-600';
+                            pErrorTitle.innerText = 'PEÇAS SEM ESTOQUE:';
+                            laminasDetalheContainer.appendChild(pErrorTitle);
+                            
+                            errorLaminas.forEach(item => {
+                                const p = document.createElement('p');
+                                p.className = 'text-red-400';
+                                p.innerHTML = `<span class="mr-2">&bull;</span> <strong>${item.quantity}</strong> peças de <strong>${item.required}m</strong> (COMPRIMENTO EXCEDIDO!)`;
+                                laminasDetalheContainer.appendChild(p);
+                            });
+                        }
+
+                        // 3. Exibe o total de peças (como antes)
+                        const pTotal = document.createElement('p');
+                        pTotal.className = 'font-bold border-t pt-2 mt-2 border-slate-600';
+                        pTotal.innerHTML = `<strong>Total:</strong> ${totalLaminasCount} peças`;
+                        laminasDetalheContainer.appendChild(pTotal);
+                        
+                        // --- FIM DA NOVA LÓGICA ---
+
+                    } else if (isManualMeasurement) {
+                        laminasDetalheContainer.innerHTML = '<p class="text-slate-500 text-xs">Cálculo de lâminas não disponível no modo de medição manual.</p>';
+                    } else {
+                        laminasDetalheContainer.innerHTML = '<p class="text-slate-500 text-xs">Nenhum cômodo válido calculado.</p>';
+                    }
+                    // --- FIM: Detalhes das lâminas ---
+
+
+                    // --- Atualiza a UI (Dados do Cliente) ---
+                    const clientDisplayWrapper = document.getElementById('calc-client-display');
+                    const hasClientData = clientName || clientAddress || clientPhone || clientCpf;
+                    clientDisplayWrapper.classList.toggle('hidden', !hasClientData);
+                    if (hasClientData) {
+                        document.getElementById('calc-client-display-name').innerText = clientName || '';
+                        document.getElementById('calc-client-display-address').innerText = clientAddress || '';
+                        document.getElementById('calc-client-display-phone').innerText = clientPhone || '';
+                        document.getElementById('calc-client-display-cpf').innerText = clientCpf || '';
+                        document.getElementById('calc-client-display-name').classList.toggle('hidden', !clientName);
+                        document.getElementById('calc-client-display-address').classList.toggle('hidden', !clientAddress);
+                        document.getElementById('calc-client-display-phone').classList.toggle('hidden', !clientPhone);
+                        document.getElementById('calc-client-display-cpf').classList.toggle('hidden', !clientCpf);
+                    }
+                    
+                    // --- Atualiza a UI (Observações) ---
+                    const obsDisplayWrapper = document.getElementById('calc-output-obs-wrapper');
+                    const obsDisplayEl = document.getElementById('calc-output-obs');
+                    if (clientObs) {
+                        obsDisplayEl.innerText = clientObs;
+                        obsDisplayWrapper.classList.remove('hidden');
+                    } else {
+                        obsDisplayEl.innerText = '';
+                        obsDisplayWrapper.classList.add('hidden');
+                    }
+
+                    errorEl.classList.add('hidden');
+                    resultsWrapper.classList.remove('hidden');
+                    
+                    // Marca o último passo como concluído
+                    stepperNav.dataset.completedStep = "4";
+                    showStep(4); // Apenas para atualizar a UI do stepper
+                });
+            }
+            
+            // --- Funções de Compartilhamento, Impressão e PDF (Mantidas 100%) ---
+            
+            function generateShareText() {
+                const header = `*Casa do Forro*\nRua Alfredo Dalmina, 127\nBairro São Cristóvão, Cascavel - PR\nTelefone: (45) 99902-4040\n\n--- *ESTIMATIVA DE MATERIAIS* ---`;
+
+                const clientName = document.getElementById('calc-client-name').value.trim();
+                const clientAddress = document.getElementById('calc-client-address').value.trim();
+                const clientPhone = document.getElementById('calc-client-phone').value.trim();
+                const clientCpf = document.getElementById('calc-client-cpf').value.trim();
+                const clientObs = document.getElementById('calc-client-obs').value.trim();
+                
+                let clientSection = '';
+                if (clientName || clientAddress || clientPhone || clientCpf) {
+                    clientSection = '\n\n*Dados do Cliente:*';
+                    if (clientName) clientSection += `\n- Nome: ${clientName}`;
+                    if (clientAddress) clientSection += `\n- Endereço: ${clientAddress}`;
+                    if (clientPhone) clientSection += `\n- Telefone: ${clientPhone}`;
+                    if (clientCpf) clientSection += `\n- CPF/CNPJ: ${clientCpf}`;
+                }
+
+                const modeloForro = document.getElementById('calc-output-modelo').innerText.trim(); 
+                const tipoAcabamento = document.getElementById('calc-output-acabamento-tipo').innerText.trim(); 
+                const comodos = document.getElementById('calc-output-comodos').innerText;
+                const area = document.getElementById('calc-output-area').innerText;
+                const perimetro = document.getElementById('calc-output-perimetro').innerText;
+                const moldura = document.getElementById('calc-output-moldura').innerText;
+                const perfilZ = document.getElementById('calc-output-perfil-z').innerText;
+                const parafusos = document.getElementById('calc-output-parafusos').innerText;
+                
+                const isMeiaCana = tipoAcabamento === 'Meia Cana';
+                const cantosInternos = document.getElementById('calc-output-cantos-internos').innerText;
+
+                let modeloForroLinha = `\n- Modelo do Forro: ${modeloForro}`;
+                let tipoAcabamentoLinha = `\n- Acabamento Escolhido: ${tipoAcabamento}`;
+                
+                let cantosLinha = '';
+                if (isMeiaCana && !document.getElementById('calc-output-cantos-internos-wrapper').classList.contains('hidden')) {
+                    cantosLinha = `\n- Cantos Internos (unid): ${cantosInternos}`;
+                }
+
+                const quantidades = `\n\n*Resumo de Materiais:*\n- Total de Cômodos: ${comodos}${modeloForroLinha}${tipoAcabamentoLinha}\n- Área Total (Forro): ${area}\n- Perímetro Total (Acabamento): ${perimetro}\n- Acabamento (barras 6m): ${moldura}${cantosLinha}\n- Estrutura (barras 3m): ${perfilZ}\n- Parafusos (unidades): ${parafusos}`;
+
+                const laminasDetalheContainer = document.getElementById('calc-output-laminas-detalhe');
+                let laminasSection = '';
+                if (laminasDetalheContainer && laminasDetalheContainer.innerText.trim() !== '' && !laminasDetalheContainer.innerText.includes("Preencha os cômodos")) {
+                    laminasSection = '\n\n*Detalhes das Lâminas (Estoque):*';
+                    
+                    laminasDetalheContainer.querySelectorAll('p').forEach(p => {
+                        let text = p.innerText.replace(' (Estoque)', '');
+                        text = text.replace('PEÇAS SEM ESTOQUE:', '\n*PEÇAS SEM ESTOQUE:*');
+                        text = text.replace(' (COMPRIMENTO EXCEDIDO!)', ' (EXCEDEU!)');
+                        text = text.replace('•', '-');
+                        if (p.classList.contains('font-bold')) { 
+                            laminasSection += `\n*${text}*`;
+                        } else {
+                            laminasSection += `\n${text}`;
+                        }
+                    });
+                }
+
+
+                const costTotal = document.getElementById('calc-cost-total').innerText;
+
+                let custos = `\n\n*CUSTO TOTAL: ${costTotal}*`;
+                
+                let obsSection = '';
+                if (clientObs) {
+                    obsSection = `\n\n*Observações:*\n${clientObs}`;
+                }
+                
+                const footer = `\n\n---\n*Atenção:* Esta é uma estimativa. Sempre adicione uma porcentagem de perda (5-10%) e confirme as medidas no local.`;
+
+                return header + clientSection + quantidades + laminasSection + custos + obsSection + footer; 
+            }
+
+            function showFeedback(message, bgColorClass) {
+                const feedbackEl = document.getElementById('copy-feedback');
+                feedbackEl.innerText = message;
+                feedbackEl.className = `hidden fixed bottom-4 right-4 ${bgColorClass} text-white px-4 py-2 rounded-lg shadow-xl transition-opacity duration-300`;
+
+                feedbackEl.classList.remove('hidden', 'opacity-0');
+                feedbackEl.classList.add('opacity-100');
+                setTimeout(() => {
+                    feedbackEl.classList.remove('opacity-100');
+                    feedbackEl.classList.add('opacity-0');
+                    setTimeout(() => { 
+                        feedbackEl.classList.add('hidden'); 
+                    }, 300);
+                }, 3000);
+            }
+
+            function copyTextFallback(text) {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed'; 
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showFeedback('Texto do orçamento copiado!', 'bg-green-600');
+                } catch (err) {
+                    console.error('Falha ao copiar estimativa: ', err);
+                }
+                document.body.removeChild(textArea);
+            }
+            
+            function isCordova() {
+                return window.cordova && typeof cordova === 'object' && window.plugins && window.plugins.socialsharing;
+            }
+
+            function handlePrint() {
+                if (window.cordova && window.cordova.plugins.printer) {
+                    calcButton.click(); 
+                    const originalBg = resultsWrapperForPrint.classList.contains('bg-slate-800') ? 'bg-slate-800' : 'bg-cyan-50';
+                    resultsWrapperForPrint.classList.remove(originalBg, 'text-slate-200');
+                    resultsWrapperForPrint.classList.add('bg-white', 'text-gray-900');
+                    
+                    window.cordova.plugins.printer.print(document.getElementById('calc-results-wrapper').outerHTML, {
+                        orientation: 'portrait'
+                    }, function (success) {
+                        if (success) {
+                            console.log('Impressão solicitada com sucesso.');
+                        } else {
+                            console.error('Falha na solicitação de impressão ou impressão cancelada.');
+                        }
+                        resultsWrapperForPrint.classList.remove('bg-white', 'text-gray-900');
+                        resultsWrapperForPrint.classList.add(originalBg, 'text-slate-200');
+                    });
+                } else {
+                    window.print();
+                }
+            }
+            
+            function handleShareImage() {
+                calcButton.click();
+                
+                const shareBtn = document.getElementById('copy-to-whatsapp');
+                shareBtn.innerText = 'Gerando Imagem...';
+                shareBtn.disabled = true;
+
+                const buttonContainer = document.getElementById('print-button-container');
+                const atencaoEl = document.getElementById('calc-atencao');
+
+                buttonContainer.classList.add('hidden');
+                atencaoEl.classList.add('hidden');
+
+                const originalBg = resultsWrapperForPrint.classList.contains('bg-slate-800') ? 'bg-slate-800' : 'bg-cyan-50';
+
+                html2canvas(resultsWrapperForPrint, { 
+                    scale: 2, 
+                    useCORS: true,
+                    backgroundColor: resultsWrapperForPrint.classList.contains('bg-slate-800') ? '#1e293b' : null // bg-slate-800
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                    const shareText = generateShareText();
+                    
+                    buttonContainer.classList.remove('hidden');
+                    atencaoEl.classList.remove('hidden');
+
+                    shareBtn.innerText = 'Compartilhar 📤';
+                    shareBtn.disabled = false;
+                    
+                    if (isCordova()) {
+                        window.plugins.socialsharing.share(
+                            shareText, 
+                            'Orçamento Casa do Forro', 
+                            imgData, 
+                            null, 
+                            function() { 
+                                showFeedback('Orçamento compartilhado!', 'bg-green-600');
+                            },
+                            function(errormsg) {
+                                console.error('Erro ao compartilhar: ' + errormsg);
+                                showFeedback('Falha no compartilhamento nativo. Copiando texto...', 'bg-red-600');
+                                copyTextFallback(shareText); 
+                            }
+                        );
+                    } else {
+                        const clientNameImage = document.getElementById('calc-client-name').value.trim() || 'Orcamento';
+                        const fileName = `Orcamento_${clientNameImage.replace(/ /g, '_')}_${Date.now()}.jpeg`;
+
+                        const a = document.createElement('a');
+                        a.href = imgData;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        
+                        showFeedback('Imagem do orçamento baixada! Texto copiado.', 'bg-green-600');
+                        copyTextFallback(shareText);
+                    }
+
+                }).catch(err => {
+                    console.error("Erro ao gerar imagem para compartilhamento:", err);
+                    showFeedback('Erro grave ao gerar imagem.', 'bg-red-600');
+                    
+                    buttonContainer.classList.remove('hidden');
+                    atencaoEl.classList.remove('hidden');
+
+                    shareBtn.innerText = 'Compartilhar 📤';
+                    shareBtn.disabled = false;
+                });
+            }
+            
+            function handlePdfSave() {
+                calcButton.click(); 
+                
+                pdfButton.innerText = 'Gerando...';
+                pdfButton.disabled = true;
+
+                const buttonContainer = document.getElementById('print-button-container');
+                const atencaoEl = document.getElementById('calc-atencao');
+                
+                buttonContainer.classList.add('hidden');
+                atencaoEl.classList.add('hidden');
+                
+                const originalBg = resultsWrapperForPrint.classList.contains('bg-slate-800') ? 'bg-slate-800' : 'bg-cyan-50';
+                resultsWrapperForPrint.classList.remove(originalBg, 'text-slate-200');
+                resultsWrapperForPrint.classList.add('bg-white', 'text-gray-900');
+                
+                const clientNamePDF = document.getElementById('calc-client-name').value.trim() || 'Orcamento';
+                const fileName = `Orcamento_${clientNamePDF.replace(/ /g, '_')}.pdf`;
+
+                html2canvas(resultsWrapperForPrint, { 
+                    scale: 2, 
+                    useCORS: true,
+                    backgroundColor: '#ffffff'
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                    const pdf = new jsPDF({
+                        orientation: 'p',
+                        unit: 'mm',
+                        format: 'a4'
+                    });
+                    
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = pdf.internal.pageSize.getHeight();
+                    const margin = 10; 
+                    
+                    const usableWidth = pdfWidth - (margin * 2);
+                    const usableHeight = pdfHeight - (margin * 2);
+                    
+                    const imgProps = pdf.getImageProperties(imgData);
+                    
+                    let imgW = usableWidth;
+                    let imgH = (imgProps.height * usableWidth) / imgProps.width;
+
+                    if (imgH > usableHeight) {
+                        imgH = usableHeight; 
+                        imgW = (imgProps.width * usableHeight) / imgProps.height; 
+                    }
+
+                    const xPos = (pdfWidth - imgW) / 2;
+                    const yPos = margin;
+
+                    pdf.addImage(imgData, 'JPEG', xPos, yPos, imgW, imgH);
+                    
+                    if (isCordova()) {
+                        const pdfDataUrl = pdf.output('datauristring');
+                        const shareText = generateShareText();
+                        
+                        window.plugins.socialsharing.share(
+                            shareText, 
+                            'Orçamento PDF Casa do Forro', 
+                            pdfDataUrl, 
+                            null, 
+                            function() { 
+                                showFeedback('PDF compartilhado!', 'bg-green-600');
+                            },
+                            function(errormsg) {
+                                console.error('Erro ao compartilhar PDF: ' + errormsg);
+                                showFeedback('Falha no compartilhamento do PDF.', 'bg-red-600');
+                            }
+                        );
+                        restoreUi(originalBg); 
+                        
+                    } else {
+                        pdf.save(fileName);
+                        showFeedback('PDF do orçamento baixado!', 'bg-green-600');
+                        restoreUi(originalBg);
+                    }
+
+                }).catch(err => {
+                    console.error("Erro ao gerar PDF:", err);
+                    alert('Ocorreu um erro ao tentar gerar o PDF.');
+                    restoreUi(originalBg);
+                });
+            }
+
+            function restoreUi(originalBg) {
+                pdfButton.innerText = 'PDF 📄';
+                pdfButton.disabled = false;
+                
+                const buttonContainer = document.getElementById('print-button-container');
+                const atencaoEl = document.getElementById('calc-atencao');
+                
+                buttonContainer.classList.remove('hidden');
+                atencaoEl.classList.remove('hidden');
+                
+                resultsWrapperForPrint.classList.remove('bg-white', 'text-gray-900');
+                resultsWrapperForPrint.classList.add(originalBg, 'text-slate-200');
+            }
+
+            // --- Adiciona Event Listeners para os botões ATUALIZADOS ---
+            if (shareButton) {
+                shareButton.addEventListener('click', handleShareImage);
+            }
+            if (printButton) {
+                printButton.addEventListener('click', handlePrint);
+            }
+            if (pdfButton) {
+                pdfButton.addEventListener('click', handlePdfSave);
+            }
+            
+            // --- ********** INÍCIO: LÓGICA DO GEMINI MODIFICADA (via Cloudflare Worker) ********** ---
+            
+            const geminiParseBtn = document.getElementById('gemini-parse-btn');
+            // const geminiApiKey = document.getElementById('gemini-api-key'); // <-- NÃO É MAIS NECESSÁRIO
+            const geminiInputText = document.getElementById('gemini-input-text');
+            const geminiFeedback = document.getElementById('gemini-feedback');
+
+            /**
+             * Pega a lista de todos os modelos de forro do APP_CONFIG.
+             */
+            function getForroModelList() {
+                if (!APP_CONFIG.models) return [];
+                // flatMap achata os arrays de 'items' de cada grupo em um único array de strings
+                return APP_CONFIG.models.flatMap(group => group.items.map(item => item.value));
+            }
+
+            if (geminiParseBtn) {
+                geminiParseBtn.addEventListener('click', async () => {
+                    
+                    // --- !!! ATUALIZE ESTE URL !!! ---
+                    // Cole o URL do seu Worker que você copiou do painel do Cloudflare
+                    const YOUR_WORKER_URL = 'https://gemini-proxy-casadoforro.gabrielmarcioli2007.workers.dev'; 
+                    // ---------------------------------
+
+                    const inputText = geminiInputText.value;
+
+                    if (!inputText) { // <-- Modificado: Não verifica mais a API Key
+                        showGeminiFeedback("Por favor, insira o texto para analisar.", false);
+                        return;
+                    }
+
+                    showGeminiFeedback("Analisando com IA...", null);
+                    geminiParseBtn.disabled = true;
+
+                    try {
+                        // Lista de forros para o prompt
+                        const forroList = getForroModelList();
+                        
+                        // O MESMO PROMPT QUE VOCÊ JÁ TINHA
+                        const prompt = `
+                            Você é um assistente de extração de dados para uma calculadora de forro PVC.
+                            Sua tarefa é analisar o texto do usuário e extrair informações para um JSON.
+                            Você DEVE responder APENAS com um único objeto JSON válido. Não inclua \`\`\`json ou qualquer outro texto.
+
+                            Esta é a lista de nomes EXATOS de forros disponíveis:
+                            ${JSON.stringify(forroList)}
+
+                            O objeto JSON deve ter a seguinte estrutura:
+                            {
+                              "clientName": "string ou null",
+                              "clientAddress": "string ou null",
+                              "clientPhone": "string ou null",
+                              "clientObs": "string ou null",
+                              "measurementType": "rooms" ou "manual",
+                              "rooms": [ 
+                                { "width": 0.0, "length": 0.0 }
+                              ],
+                              "manualArea": 0.0 ou null,
+                              "forroModel": "string com o nome exato da lista ou null",
+                              "acabamentoType": "Meia Cana" ou "Perfil U" ou "Sem Acabamentos",
+                              "includeEstrutura": true ou false,
+                              "includeParafusos": true ou false,
+                              "includeMaoDeObra": true ou false,
+                              "includeFrete": true ou false,
+                              "manualQtyAcabamento": 0 ou null,
+                              "manualQtyParafusos": 0 ou null,
+                              "manualPriceForro": 0.0 ou null,
+                              "manualPriceAcabamento": 0.0 ou null,
+                              "manualPriceEstrutura": 0.0 ou null
+                            }
+                            
+                            REGRAS:
+                            1.  **measurementType**: 
+                                - Se o texto contiver medidas como '6x6,20' ou '2,5x5,00', use "rooms".
+                                - Se o texto contiver uma área total como '40,8 MTS', use "manual".
+                                - Se ambos existirem, priorize "rooms".
+                                - Se nenhum existir, use "rooms".
+                            2.  **rooms**: Preencha este array APENAS se measurementType for "rooms". Use números para width e length. Converta vírgula para ponto (ex: 6,20 se torna 6.20).
+                            3.  **manualArea**: Preencha este campo APENAS se measurementType for "manual". Use um número (ex: 40.8).
+                            4.  **forroModel**: Analise o texto. Encontre o item da \`lista de forros\` que melhor corresponde ao que o usuário pediu (ex: "forro 8mm", "jatoba", "branco neve"). Faça uma correspondência aproximada. Retorne o NOME EXATO da lista que você escolheu. Se não houver menção ou for muito ambíguo, use \`null\`.
+                            5.  **Cliente**: Extraia Nome, Endereço e Telefone se existirem.
+                            6.  **acabamentoType**: Analise o texto por "meia cana", "rodaforro" ou "perfil u". 
+                                - Se encontrar "meia cana" ou "rodaforro", use "Meia Cana".
+                                - Se encontrar "perfil u", use "Perfil U".
+                                - **Se NENHUM acabamento for mencionado, use "Sem Acabamentos".**
+                            7.  **Serviços (Padrão é TRUE)**: Os serviços (estrutura, parafusos, mão de obra, frete) vêm inclusos por padrão (true). Só mude para 'false' se o texto EXPLICITAMENTE pedir para *REMOVER* o item.
+                                - \`includeEstrutura\`: Use \`false\` se o texto disser "sem estrutura", "sem armação", "só o forro". Senão, \`true\`.
+                                - \`includeParafusos\`: Use \`false\` se o texto disser "sem parafusos", "só o forro". Senão, \`true\`.
+                                - \`includeMaoDeObra\`: Use \`false\` se o texto disser "sem instalação", "sem mão de obra", "só o material". Senão, \`true\`.
+                                - \`includeFrete\`: Use \`false\` se o texto disser "sem frete", "sem entrega", "cliente retira". Senão, \`true\`.
+                            8.  **manualQtyAcabamento**: Se o texto especificar uma quantidade exata de barras de acabamento (ex: "7 brs de perfil", "10 meia cana", "07 brs"), extraia apenas o número (ex: 7 ou 10). Se não for mencionado, use \`null\`.
+                            9.  **manualQtyParafusos**: Se o texto especificar uma quantidade exata de parafusos (ex: "200 parafusos", "pacote com 500"), extraia apenas o número (ex: 200 ou 500). Se não for mencionado, use \`null\`.
+                            10. **manualPriceForro**: Se o texto especificar um preço para o forro (ex: "forro 30,00 o metro", "forro a 30,00"), extraia o valor numérico (ex: 30.00). Use \`null\` se não mencionado.
+                            11. **manualPriceAcabamento**: Se o texto especificar um preço para o acabamento (ex: "perfil U 45,00", "meia cana de 50,00"), extraia o valor numérico (ex: 45.00 ou 50.00). Use \`null\` se não mencionado.
+                            12. **manualPriceEstrutura**: Se o texto especificar um preço para a estrutura (ex: "metalon 20x20 25,00", "perfil Z a 22,00"), extraia o valor numérico (ex: 25.00 ou 22.00). Use \`null\` se não mencionado.
+                            
+                            Analise o texto abaixo:
+                            ---
+                            ${inputText}
+                            ---
+                        `;
+                        
+                        // ### INÍCIO DA MUDANÇA DE LÓGICA ###
+                        
+                        // 1. Chamamos o NOSSO Worker em vez da SDK do Google
+                        const response = await fetch(YOUR_WORKER_URL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ prompt: prompt }), // Enviamos o prompt para o worker
+                        });
+
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`Erro do Worker: ${errorText}`);
+                        }
+
+                        // 2. O Worker nos devolve o JSON já pronto
+                        const data = await response.json(); 
+                        
+                        // 3. Usamos o JSON para preencher a calculadora
+                        fillCalculatorFromGemini(data);
+                        showGeminiFeedback("Campos preenchidos com sucesso!", true);
+                        
+                        // ### FIM DA MUDANÇA DE LÓGICA ###
+
+                    } catch (e) {
+                        console.error("Erro ao chamar o Worker:", e);
+                        showGeminiFeedback("Erro ao analisar. (Erro: " + e.message + ")", false);
+                    } finally {
+                        geminiParseBtn.disabled = false;
+                    }
+                });
+            }
+
+            /**
+             * Exibe feedback para o usuário do Gemini.
+             */
+            function showGeminiFeedback(message, success) {
+                geminiFeedback.innerText = message;
+                geminiFeedback.classList.remove('hidden', 'text-green-400', 'text-red-400', 'text-amber-400');
+                
+                if (success === true) {
+                    geminiFeedback.classList.add('text-green-400');
+                } else if (success === false) {
+                    geminiFeedback.classList.add('text-red-400');
+                } else {
+                    geminiFeedback.classList.add('text-amber-400');
+                }
+            }
+
+            /**
+             * Preenche a calculadora com os dados extraídos pelo Gemini.
+             */
+            // ***** ESTA FUNÇÃO PERMANECE A MESMA *****
+            function fillCalculatorFromGemini(data) {
+                // --- PASSO 1: DADOS DO CLIENTE ---
+                if (data.clientName) document.getElementById('calc-client-name').value = data.clientName;
+                if (data.clientAddress) document.getElementById('calc-client-address').value = data.clientAddress;
+                if (data.clientPhone) document.getElementById('calc-client-phone').value = data.clientPhone;
+                if (data.clientObs) document.getElementById('calc-client-obs').value = data.clientObs;
+
+                let needsPriceUpdate = false;
+
+                // --- PASSO 2: MODELO DO FORRO E ACABAMENTO ---
+                if (data.forroModel) {
+                    const option = Array.from(modeloForroSelect.options).find(opt => opt.value === data.forroModel);
+                    if (option) {
+                        option.selected = true;
+                        needsPriceUpdate = true;
+                    }
+                }
+                
+                if (data.acabamentoType) {
+                    document.getElementById('calc-tipo-acabamento').value = data.acabamentoType;
+                    needsPriceUpdate = true;
+                }
+
+                // --- PASSO 4 (e 2): INCLUSÃO DE ITENS ---
+                if (typeof data.includeEstrutura === 'boolean') {
+                    document.getElementById('check-perfil-z').checked = data.includeEstrutura;
+                    document.getElementById('include-estrutura').checked = data.includeEstrutura;
+                }
+                
+                if (typeof data.includeParafusos === 'boolean') {
+                    document.getElementById('check-parafusos').checked = data.includeParafusos;
+                    document.getElementById('include-parafuso').checked = data.includeParafusos;
+                }
+                
+                if (typeof data.includeMaoDeObra === 'boolean') {
+                    document.getElementById('include-mao-de-obra').checked = data.includeMaoDeObra;
+                }
+                
+                if (typeof data.includeFrete === 'boolean') {
+                    document.getElementById('include-frete').checked = data.includeFrete;
+                }
+                
+                // --- PASSO 4: AJUSTE FINO DE QUANTIDADES ---
+                if (data.manualQtyAcabamento && data.manualQtyAcabamento > 0) {
+                    document.getElementById('calc-qty-acabamento-manual').value = data.manualQtyAcabamento;
+                }
+                if (data.manualQtyParafusos && data.manualQtyParafusos > 0) {
+                    document.getElementById('calc-qty-parafusos-manual').value = data.manualQtyParafusos;
+                }
+                
+                // --- PASSO 4: PREENCHIMENTO DE PREÇOS MANUAIS (NOVO) ---
+                let manualPriceSet = false;
+                if (data.manualPriceForro && data.manualPriceForro > 0) {
+                    priceForroInput.value = parseFloat(data.manualPriceForro).toFixed(2);
+                    overrideForroM2.checked = true;
+                    manualPriceSet = true;
+                }
+                
+                if (data.manualPriceAcabamento && data.manualPriceAcabamento > 0) {
+                    priceAcabamentoInput.value = parseFloat(data.manualPriceAcabamento).toFixed(2);
+                    overrideAcabamento.checked = true;
+                    manualPriceSet = true;
+                }
+                
+                if (data.manualPriceEstrutura && data.manualPriceEstrutura > 0) {
+                    priceEstruturaInput.value = parseFloat(data.manualPriceEstrutura).toFixed(2);
+                    overrideEstrutura.checked = true;
+                    manualPriceSet = true;
+                }
+
+
+                // Se mudamos forro, acabamento, OU ativamos um preço manual, 
+                // precisamos rodar updateUnitPrices() para
+                // 1. Puxar preços dinâmicos (se não houver override)
+                // 2. Respeitar os overrides (se houver)
+                // 3. Atualizar a UI (cores/readonly) de todos os inputs.
+                if (needsPriceUpdate || manualPriceSet) {
+                    updateUnitPrices();
+                }
+
+                // --- PASSO 3: MEDIÇÃO ---
+                let jumpedToStep = 1;
+
+                if (data.measurementType === 'manual' && data.manualArea > 0) {
+                    // Seleciona o rádio "Manual"
+                    measurementTypeRooms.checked = false;
+                    measurementTypeManual.checked = true;
+                    // Mostra/oculta os painéis corretos
+                    measurementRoomsContent.classList.add('hidden');
+                    measurementManualContent.classList.remove('hidden');
+                    
+                    // Preenche a área
+                    document.getElementById('calc-manual-area').value = data.manualArea;
+                    jumpedToStep = 3; // Pula para o passo 3
+
+                } else if (data.measurementType === 'rooms' && data.rooms && data.rooms.length > 0) {
+                    // Seleciona o rádio "Cômodos"
+                    measurementTypeRooms.checked = true;
+                    measurementTypeManual.checked = false;
+                    // Mostra/oculta os painéis corretos
+                    measurementRoomsContent.classList.remove('hidden');
+                    measurementManualContent.classList.add('hidden');
+                    
+                    comodosContainer.innerHTML = ''; // Limpa cômodos existentes
+
+                    data.rooms.forEach((room, index) => {
+                        const comodoHTML = createComodoHTML(index + 1); 
+                        const newComodo = document.createElement('div');
+                        newComodo.innerHTML = comodoHTML;
+                        const comodoElement = newComodo.firstElementChild;
+                        
+                        // JS USA OS NOMES DE CLASSE, A ORDEM NÃO IMPORTA
+                        comodoElement.querySelector('.comodo-largura').value = room.width || '';
+                        comodoElement.querySelector('.comodo-comprimento').value = room.length || '';
+
+                        comodosContainer.appendChild(comodoElement);
+                    });
+                    
+                    updateComodoNumbers();
+                    jumpedToStep = 3; // Pula para o passo 3
+                
+                } else if (data.forroModel || data.acabamentoType) {
+                    jumpedToStep = 2;
+                }
+                
+                // Navega para o passo mais relevante
+                // Se preencheu qtd ou preço manual, força ir pro passo 4 para o usuário ver
+                if (data.manualQtyAcabamento > 0 || data.manualQtyParafusos > 0 || manualPriceSet) {
+                     updateUnitPrices(); // Garante preços
+                     jumpedToStep = 4;
+                }
+                
+                if (jumpedToStep > 1) {
+                    showStep(jumpedToStep);
+                }
+            }
+            // ***** FIM DA FUNÇÃO fillCalculator... *****
+            
+            // --- ********** FIM: LÓGICA DO GEMINI ATUALIZADA ********** ---
+
+        });
+    </script>
+</body>
+</html>
