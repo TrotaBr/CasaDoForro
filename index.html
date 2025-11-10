@@ -313,15 +313,7 @@
 
                             <hr class="border-slate-600">
 
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" id="check-perfil-z" checked class="h-4 w-4 text-cyan-600 border-slate-600 rounded focus:ring-cyan-500 bg-slate-700">
-                                <label for="check-perfil-z" class="text-sm font-medium text-slate-300">Incluir Estrutura (Perfil Z/Metalon) no cálculo de Qtd.</label>
-                            </div>
-
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" id="check-parafusos" checked class="h-4 w-4 text-cyan-600 border-slate-600 rounded focus:ring-cyan-500 bg-slate-700">
-                                <label for="check-parafusos" class="text-sm font-medium text-slate-300">Incluir Itens de Fixação (Parafusos) no cálculo de Qtd.</Llabel>
-                            </div>
+                            <!-- Checkboxes for incluir estrutura/parafusos foram removidos do Passo 2 (redundantes). Controle agora no Passo 4 -->
 
 
                             <div class="flex justify-between space-x-2 pt-2">
@@ -1249,8 +1241,8 @@
                     const isMeiaCana = tipoAcabamento === 'Meia Cana';
                     const isSemAcabamento = tipoAcabamento === 'Sem Acabamentos';
 
-                    const includePerfilZQuantity = document.getElementById('check-perfil-z')?.checked || false;
-                    const includeParafusosQuantity = document.getElementById('check-parafusos')?.checked || false;
+                    // NOTE: inclusion of estrutura/parafusos is now controlled in Step 4
+                    // via `include-estrutura` and `include-parafuso` checkboxes.
                     
                     const isEstruturaIncluded = document.getElementById('include-estrutura').checked; 
                     const isParafusoIncluded = document.getElementById('include-parafuso').checked; 
@@ -1375,11 +1367,22 @@
                     
                     const numPerfilZ = !isNaN(manualQtyEstrutura) && manualQtyEstrutura >= 0 
                         ? manualQtyEstrutura 
-                        : (includePerfilZQuantity ? Math.ceil(totalArea * 1.2) : 0); 
+                        : (isEstruturaIncluded ? Math.ceil(totalArea * 1.2) : 0); 
                     
-                    const numParafusos = !isNaN(manualQtyParafusos) && manualQtyParafusos >= 0 
+                    let numParafusos = !isNaN(manualQtyParafusos) && manualQtyParafusos >= 0 
                         ? manualQtyParafusos 
-                        : (includeParafusosQuantity ? Math.ceil(totalArea * 20) : 0);
+                        : (isParafusoIncluded ? Math.ceil(totalArea * 20) : 0);
+
+                    // Se o usuário desmarcou inclusão de ESTRUTURA no Passo 4,
+                    // reduzimos a quantidade de parafusos pela metade (menos fixações
+                    // necessárias) e então arredondamos para cima em blocos de 100.
+                    if (!isEstruturaIncluded && numParafusos > 0) {
+                        numParafusos = Math.ceil(numParafusos / 2);
+                    }
+                    // Arredonda para cima ao próximo múltiplo de 100
+                    if (numParafusos > 0) {
+                        numParafusos = Math.ceil(numParafusos / 100) * 100;
+                    }
                     
                     // --- Calcular Custos Finais (MODIFICADO) ---
                     const costForro = totalArea * priceForroM2;
@@ -2058,12 +2061,12 @@
 
                 // --- PASSO 4 (e 2): INCLUSÃO DE ITENS ---
                 if (typeof data.includeEstrutura === 'boolean') {
-                    document.getElementById('check-perfil-z').checked = data.includeEstrutura;
+                    // `check-perfil-z` was removed from the UI (step 2). Use step 4 checkbox.
                     document.getElementById('include-estrutura').checked = data.includeEstrutura;
                 }
-                
+
                 if (typeof data.includeParafusos === 'boolean') {
-                    document.getElementById('check-parafusos').checked = data.includeParafusos;
+                    // `check-parafusos` was removed from the UI (step 2). Use step 4 checkbox.
                     document.getElementById('include-parafuso').checked = data.includeParafusos;
                 }
                 
